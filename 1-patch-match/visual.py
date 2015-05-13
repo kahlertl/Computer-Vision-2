@@ -18,6 +18,20 @@ def show(img):
     wait_esc()
     cv2.destroyWindow('image')
 
+def load_frames(filename1, filename2, flags=0):
+    frame1 = cv2.imread(args.image1, flags)
+    frame2 = cv2.imread(args.image2, flags)
+
+    # argument validation
+    if frame1 is None:
+        sys.stderr.write('Cannot read image 1 %s\n' % filename1)
+        sys.exit(1)
+    if frame2 is None:
+        sys.stderr.write('Cannot read image 2 %s\n' % filename2)
+        sys.exit(1)
+
+    return frame1, frame2
+
 def show_flow(flow):
     magnitude, angle = cv2.cartToPolar(flow[... , 0], flow[... , 1], angleInDegrees=True)
 
@@ -42,8 +56,8 @@ def show_flow(flow):
     show(rgb)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('image1')
-parser.add_argument('image2')
+parser.add_argument('image1', help="First frame")
+parser.add_argument('image2', help="Second frame")
 
 if __name__ == '__main__':
     import sys
@@ -51,8 +65,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # load an color image  in grayscale
-    frame1 = cv2.imread(args.image1, 0)
-    frame2 = cv2.imread(args.image2, 0)
+    frame1, frame2 = load_frames(args.image1, args.image2, 0)
 
     # argument validation
     if frame1 is None:

@@ -3,21 +3,21 @@
 anita.sellent@tu-dresden.de
 23 April 2015
 
-You can discuss the exercises in groups, but you need to hand in individual solutions
-to profit from the exercises during the examation as discussed (points give you an
-indication of weight/ effort). Hand in your solution (implementation and a pdf with
-a few written sentences to the questions) **before 21 May 2015**.
-Sample images and the code for visualization are provided on the webpage Middlebury
-benchmark webpage (http://vision.middlebury.edu/flow/).
+You can discuss the exercises in groups, but you need to hand in individual
+solutions to profit from the exercises during the examation as discussed (points
+give you an indication of weight/ effort). Hand in your solution (implementation
+and a pdf with a few written sentences to the questions) **before 21 May 2015**.
+Sample images and the code for visualization are provided on the webpage
+Middlebury benchmark webpage (http://vision.middlebury.edu/flow/).
 
-The research paper describing the algorithm and some applications is available on
-the internet.
+The research paper describing the algorithm and some applications is available
+on the internet.
 
 ### 1. Visualization (1 Point)
 
-Use the visualization method of the Middlebury benchmark for flow visualiza-
-tion. Use some dummy flow to understand the color-coding. How can you scale
-the flow to obtain an optimal visualization?
+Use the visualization method of the Middlebury benchmark for flow visualization.
+Use some dummy flow to understand the color-coding. How can you scale the flow
+to obtain an optimal visualization?
 
 How can you scale the flow to obtain a visualization to compare different
 algorithms?
@@ -45,8 +45,8 @@ after each iteration?
 ### 4. Use the image pyramid (2 Points)
 
 Implement the pyramidal patchMatch algorithm. What is the difference in the
-patchMatch pyramid approach and the pyramid approach that was introduced in
-the lecture? What is the idea behind each approach?
+patchMatch pyramid approach and the pyramid approach that was introduced in the
+lecture? What is the idea behind each approach?
 
 ### 5. Similarity Measure II (2 Points)
 

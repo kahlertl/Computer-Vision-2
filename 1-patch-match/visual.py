@@ -2,6 +2,8 @@
 
 import numpy as np
 import cv2
+import argparse
+
 
 def wait_esc(msg='Press ESC to continue ...'):
     if msg:
@@ -39,11 +41,26 @@ def show_flow(flow):
 
     show(rgb)
 
+parser = argparse.ArgumentParser()
+parser.add_argument('image1')
+parser.add_argument('image2')
 
 if __name__ == '__main__':
+    import sys
+
+    args = parser.parse_args()
+
     # load an color image  in grayscale
-    frame1 = cv2.imread('eval-data/Teddy/frame10.png', 0)
-    frame2 = cv2.imread('eval-data/Teddy/frame11.png', 0)
+    frame1 = cv2.imread(args.image1, 0)
+    frame2 = cv2.imread(args.image2, 0)
+
+    # argument validation
+    if frame1 is None:
+        print('Cannot read image 1 %s' % args.image1)
+        sys.exit(1)
+    if frame2 is None:
+        print('Cannot read image 2 %s' % args.image2)
+        sys.exit(1)
 
     # flow = cv2.calcOpticalFlowFarneback(frame1, frame2, None, 0.5, 3, 15, 3, 5, 1.2, 0)
     flow = cv2.calcOpticalFlowFarneback(frame1, frame2,

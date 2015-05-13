@@ -3,6 +3,7 @@
 import numpy as np
 import cv2
 import argparse
+import sys
 
 
 def wait_esc(msg='Press ESC to continue ...'):
@@ -13,14 +14,14 @@ def wait_esc(msg='Press ESC to continue ...'):
         if cv2.waitKey(0) & 0xff == 27:
             break
 
-def show(img):
-    cv2.imshow('image', img)
+def show(img, title='image'):
+    cv2.imshow(title, img)
     wait_esc()
-    cv2.destroyWindow('image')
+    cv2.destroyWindow(title)
 
 def load_frames(filename1, filename2, flags=0):
-    frame1 = cv2.imread(args.image1, flags)
-    frame2 = cv2.imread(args.image2, flags)
+    frame1 = cv2.imread(filename1, flags)
+    frame2 = cv2.imread(filename2, flags)
 
     # argument validation
     if frame1 is None:

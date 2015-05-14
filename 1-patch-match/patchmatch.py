@@ -32,6 +32,11 @@ def ssd(image1, center1, image2, center2, size):
     return np.sum(diff ** 2)
 
 
+SEARCH_FIELD = np.array(((-1, -1), (-1, 0), (-1, 1),
+                         ( 0, -1),          ( 0, 1),
+                         ( 1, -1), ( 1, 0), ( 1, 1)))
+
+
 class PatchMatch(object):
     """Dump implementation of the PatchMatch algorithm as described by
 
@@ -57,6 +62,8 @@ class PatchMatch(object):
         self.search_ratio = search_ratio
         self.search_radius = search_radius or min(image1.shape)
 
+        self.border = self.match_radius + self.maxoffset
+
         # create an empty matrix with the same x-y dimensions like the first
         # image but with two channels. Each channel stands for an x/y offset
         # of a pixel at this position.
@@ -67,10 +74,8 @@ class PatchMatch(object):
         self.initialize()
 
     def __iter__(self):
-        border = self.match_radius + self.maxoffset
-
-        rows = xrange(border, self.nrows - border)
-        cols = xrange(border, self.ncols - border)
+        rows = xrange(self.border, self.nrows - self.border)
+        cols = xrange(self.border, self.ncols - self.border)
 
         for index in product(rows, cols):
             yield index
@@ -97,7 +102,10 @@ class PatchMatch(object):
         neighbor = -1 if self.niterations % 2 == 0 else 1
 
         for index in self:
+            # echo('\r', end='')
+            # echo('index', index, end='')
             self.propagate(index, neighbor)
+        for index in self:
             self.random_search(index)
 
     def propagate(self, index, neighbor):
@@ -118,23 +126,47 @@ class PatchMatch(object):
             self.result[index] = self.result[maxindex]
 
     def random_search(self, index):
-        pass
+        i = 0
+        quality = self.quality[index]
+
+        while True:
+            distance = int(self.search_radius * self.search_ratio ** i)
+            i += 1
+
+            # halt condition. search radius must not be smaller
+            # than one pixel
+            if distance < 1:
+                break
+
+            offset  = distance * random.choice(SEARCH_FIELD)
+            center  = index + offset
+
+            if self.border < center[0] < self.nrows - self.border and \
+               self.border < center[1] < self.ncols - self.border:
+                new_quality = ssd(self.image1, index, self.image2, center, self.match_radius)
+
+                if new_quality > quality:
+                    self.result[index] = offset
+                    quality = new_quality
 
 
 if __name__ == '__main__':
-    # command line parsing
-    args = parser.parse_args()
-    frame1, frame2 = load_frames(args.image1, args.image2)
+    try:
+        # command line parsing
+        args = parser.parse_args()
+        frame1, frame2 = load_frames(args.image1, args.image2)
 
-    print('initialize ...')
-    pm = PatchMatch(frame1, frame2)
+        print('initialize ...')
+        pm = PatchMatch(frame1, frame2)
 
-    # # do some iterations
-    for i in xrange(1):
-        print('iteration %d ...' % (i + 1))
-        pm.iterate()
+        # do some iterations
+        for i in xrange(2):
+            print('iteration %d ...' % (i + 1))
+            pm.iterate()
 
-    # display final result
-    # we have to convert the integer offsets to floats, because
-    # optical flow could be subpixel accurate
-    show_flow(np.float32(pm.result))
+        # display final result
+        # we have to convert the integer offsets to floats, because
+        # optical flow could be subpixel accurate
+        show_flow(np.float32(pm.result))
+    except KeyboardInterrupt:
+        print('Stopping ...')

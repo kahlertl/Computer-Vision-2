@@ -40,15 +40,22 @@ class PatchMatch(object):
     In ACM Transactions on Graphics (Proc. SIGGRAPH), 2009. 2
     """
 
-    def __init__(self, image1, image2, radius=5, maxoffset=10):
+    def __init__(self, image1, image2, match_radius=5, search_ratio=0.5, search_radius=None, maxoffset=10):
+        if not 0 < search_ratio < 1:
+            raise ValueError('Search ratio must be in interval (0,1)')
+
+        # input
         self.image1 = image1
         self.image2 = image2
-        self.radius = radius
-        self.maxoffset = maxoffset
+        self.nrows, self.ncols = self.image1.shape
 
-        self.nrows = self.image1.shape[0]
-        self.ncols = self.image1.shape[1]
         self.niterations = 0
+
+        # parameters
+        self.maxoffset = maxoffset
+        self.match_radius = match_radius
+        self.search_ratio = search_ratio
+        self.search_radius = search_radius or min(image1.shape)
 
         # create an empty matrix with the same x-y dimensions like the first
         # image but with two channels. Each channel stands for an x/y offset
@@ -60,7 +67,7 @@ class PatchMatch(object):
         self.initialize()
 
     def __iter__(self):
-        border = self.radius + self.maxoffset
+        border = self.match_radius + self.maxoffset
 
         rows = xrange(border, self.nrows - border)
         cols = xrange(border, self.ncols - border)
@@ -80,7 +87,7 @@ class PatchMatch(object):
             # to the current index
             center = index[0] + offset[0], index[1] + offset[1]
 
-            self.quality[index] = ssd(self.image1, index, self.image2, center, self.radius)
+            self.quality[index] = ssd(self.image1, index, self.image2, center, self.match_radius)
 
     def iterate(self):
         self.niterations += 1
@@ -124,7 +131,7 @@ if __name__ == '__main__':
 
     # # do some iterations
     for i in xrange(1):
-        print('iteration %d ...' % i)
+        print('iteration %d ...' % (i + 1))
         pm.iterate()
 
     # display final result

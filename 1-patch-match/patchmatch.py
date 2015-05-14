@@ -118,16 +118,16 @@ class PatchMatch(object):
                               self.quality[indices[1]],
                               self.quality[indices[2]]))
 
-        # get the index of the maximal quality
-        maxindex = indices[np.argmax(qualities)]
+        # get the index of the best quality (smallest distance)
+        minindex = indices[np.argmin(qualities)]
 
-        # get the offset of the neighbor with the maximal quality
-        if maxindex != index:
-            self.result[index] = self.result[maxindex]
+        # get the offset from the neighbor with the best quality
+        if minindex != index:
+            self.result[index] = self.result[minindex]
 
     def random_search(self, index):
         i = 0
-        quality = self.quality[index]
+        best_quality = self.quality[index]
 
         while True:
             distance = int(self.search_radius * self.search_ratio ** i)
@@ -141,13 +141,14 @@ class PatchMatch(object):
             offset  = distance * random.choice(SEARCH_FIELD)
             center  = index + offset
 
+            # check that we do not jump outside the image
             if self.border < center[0] < self.nrows - self.border and \
                self.border < center[1] < self.ncols - self.border:
-                new_quality = ssd(self.image1, index, self.image2, center, self.match_radius)
+                quality = ssd(self.image1, index, self.image2, center, self.match_radius)
 
-                if new_quality > quality:
+                if quality < best_quality:
                     self.result[index] = offset
-                    quality = new_quality
+                    best_quality = quality
 
 
 def reconstruct_from_flow(flow, image):
@@ -160,6 +161,21 @@ def reconstruct_from_flow(flow, image):
 
     return result
 
+def merge(image1, image2):
+    # convert images into RGB if they are grayscale
+    if len(image1.shape) == 2:
+        image1 = cv2.cvtColor(image1, cv2.COLOR_GRAY2BGR)
+    if len(image2.shape) == 2:
+        image2 = cv2.cvtColor(image2, cv2.COLOR_GRAY2BGR)
+
+    height1, width1 = image1.shape[:2]
+    height2, width2 = image2.shape[:2]
+
+    canvas = np.zeros((max(height1, height2), width1 + width2, 3), dtype=np.uint8)
+    canvas[ : height1, : width1] = image1
+    canvas[ : height2, width1 : width1 + width2] = image2
+
+    return canvas
 
 if __name__ == '__main__':
     try:
@@ -170,22 +186,19 @@ if __name__ == '__main__':
         print('initialize ...')
         pm = PatchMatch(frame1, frame2)
 
-        # result after initialziation
-        show(reconstruct_from_flow(pm.result, frame2))
-        show(flow2rgb(np.float32(pm.result)))
-
         # do some iterations
-        for i in xrange(1):
+        for i in xrange(2):
             print('iteration %d ...' % (i + 1))
             pm.iterate()
 
-            show(reconstruct_from_flow(pm.result, frame2))
+        reconstruction = reconstruct_from_flow(pm.result, frame2)
 
-            # display final result
-            # we have to convert the integer offsets to floats, because
-            # optical flow could be subpixel accurate
-            rgb = flow2rgb(np.float32(pm.result))
-            show(rgb)
+        # display final result
+        # we have to convert the integer offsets to floats, because
+        # optical flow could be subpixel accurate
+        flow = flow2rgb(np.float32(pm.result))
+
+        show(merge(flow, reconstruction))
 
     except KeyboardInterrupt:
         print('Stopping ...')

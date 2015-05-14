@@ -2,11 +2,13 @@
 
 import numpy as np
 import cv2
-from visual import parser, load_frames, flow2rgb, show
+from visual import load_frames, flow2rgb, show
 import random
 from itertools import product
-
+import argparse
 import sys
+
+
 def echo(*args, **kwargs):
     end = kwargs.get('end', '\n')
 
@@ -177,27 +179,48 @@ def merge(image1, image2):
 
     return canvas
 
+parser = argparse.ArgumentParser()
+parser.add_argument('image1', help="First frame")
+parser.add_argument('image2', help="Second frame")
+parser.add_argument('-i', '--iterations', type=int, default=3)
+parser.add_argument('--match-radius', type=int, default=4)
+parser.add_argument('--search-ratio', type=float, default=0.5)
+parser.add_argument('--search-radius', type=int, default=None)
+parser.add_argument('--maxoffset', type=int, default=15)
+
 if __name__ == '__main__':
     try:
         # command line parsing
         args = parser.parse_args()
         frame1, frame2 = load_frames(args.image1, args.image2)
 
+        print('Parameters:')
+        print('  iterations:    %d' % args.iterations)
+        print('  match-radius:  %d' % args.match_radius)
+        print('  maxoffset:     %d' % args.maxoffset)
+        print('  search-radius: %d' % (args.search_radius or min(frame1.shape[:2])))
+        print('  search-ratio:  %f' % args.search_ratio)
+        print('')
+
         print('initialize ...')
-        pm = PatchMatch(frame1, frame2)
+        pm = PatchMatch(frame1, frame2,
+                        match_radius=args.match_radius, search_ratio=args.search_ratio,
+                        maxoffset=args.maxoffset, search_radius=args.search_radius)
 
         # do some iterations
-        for i in xrange(2):
+        for i in xrange(args.iterations):
+            # display progress
+            # we have to convert the integer offsets to floats, because
+            # optical flow could be subpixel accurate
+            flow = flow2rgb(np.float32(pm.result))
+            reconstruction = reconstruct_from_flow(pm.result, frame2)
+            show(merge(flow, reconstruction))
+
             print('iteration %d ...' % (i + 1))
             pm.iterate()
 
-        reconstruction = reconstruct_from_flow(pm.result, frame2)
-
-        # display final result
-        # we have to convert the integer offsets to floats, because
-        # optical flow could be subpixel accurate
         flow = flow2rgb(np.float32(pm.result))
-
+        reconstruction = reconstruct_from_flow(pm.result, frame2)
         show(merge(flow, reconstruction))
 
     except KeyboardInterrupt:

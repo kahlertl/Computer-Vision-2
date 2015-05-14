@@ -33,7 +33,7 @@ def load_frames(filename1, filename2, flags=0):
 
     return frame1, frame2
 
-def show_flow(flow):
+def flow2rgb(flow):
     magnitude, angle = cv2.cartToPolar(flow[... , 0], flow[... , 1], angleInDegrees=True)
 
     # dimension for the HSV image
@@ -54,7 +54,7 @@ def show_flow(flow):
     # convert HSV image back to RGB space
     rgb = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 
-    show(rgb)
+    return rgb
 
 parser = argparse.ArgumentParser()
 parser.add_argument('image1', help="First frame")
@@ -92,4 +92,5 @@ if __name__ == '__main__':
         0     # flags
     )
 
-    show_flow(flow)
+    rgb = flow2rgb(flow)
+    show(rgb)

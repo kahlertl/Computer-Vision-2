@@ -2,7 +2,7 @@
 
 import numpy as np
 import cv2
-from visual import parser, load_frames, show_flow
+from visual import parser, load_frames, flow2rgb, show
 import random
 from itertools import product
 
@@ -150,6 +150,17 @@ class PatchMatch(object):
                     quality = new_quality
 
 
+def reconstruct_from_flow(flow, image):
+    result = np.zeros_like(image)
+
+    for index in np.ndindex(flow.shape[0], flow.shape[1]):
+        offset = flow[index]
+        pixel  = index[0] + offset[0], index[1] + offset[1]
+        result[index] = image[pixel]
+
+    return result
+
+
 if __name__ == '__main__':
     try:
         # command line parsing
@@ -159,14 +170,22 @@ if __name__ == '__main__':
         print('initialize ...')
         pm = PatchMatch(frame1, frame2)
 
+        # result after initialziation
+        show(reconstruct_from_flow(pm.result, frame2))
+        show(flow2rgb(np.float32(pm.result)))
+
         # do some iterations
-        for i in xrange(2):
+        for i in xrange(1):
             print('iteration %d ...' % (i + 1))
             pm.iterate()
 
-        # display final result
-        # we have to convert the integer offsets to floats, because
-        # optical flow could be subpixel accurate
-        show_flow(np.float32(pm.result))
+            show(reconstruct_from_flow(pm.result, frame2))
+
+            # display final result
+            # we have to convert the integer offsets to floats, because
+            # optical flow could be subpixel accurate
+            rgb = flow2rgb(np.float32(pm.result))
+            show(rgb)
+
     except KeyboardInterrupt:
         print('Stopping ...')

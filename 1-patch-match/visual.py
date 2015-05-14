@@ -44,8 +44,8 @@ def flow2rgb(flow):
     hsv = np.zeros(dimension, dtype=np.uint8)
 
     hue        = angle / 2
-    saturation = cv2.normalize(magnitude, None, 0, 255, cv2.NORM_MINMAX)
-    value      = 255
+    saturation = 255
+    value      = cv2.normalize(magnitude, None, 0, 255, cv2.NORM_MINMAX)
 
     hsv[... , 0] = hue        # range [0, 179]
     hsv[... , 1] = saturation # range [0, 255]

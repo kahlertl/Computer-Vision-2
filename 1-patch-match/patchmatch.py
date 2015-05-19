@@ -72,8 +72,6 @@ class PatchMatch(object):
         self.result  = np.zeros(dtype=np.int16, shape=(self.nrows, self.ncols, 2))
         self.quality = np.zeros(dtype=np.float32, shape=(self.nrows, self.ncols))
 
-        # initialize offsets randomly
-        self.initialize()
 
     def __iter__(self):
         rows = xrange(self.border, self.nrows - self.border)
@@ -82,19 +80,23 @@ class PatchMatch(object):
         for index in product(rows, cols):
             yield index
 
-    def initialize(self):
-        for index in self:
-            # create a random offset in 
-            offset = random.randint(-self.maxoffset, self.maxoffset), random.randint(-self.maxoffset, self.maxoffset)
+    def initialize(self, prior_knowledge=None):
+        # use precomputed offsets and qualities
+        if prior_knowledge:
+            self.result, self.quality = prior_yknowledge
+        else:
+            for index in self:
+                # create a random offset in 
+                offset = random.randint(-self.maxoffset, self.maxoffset), random.randint(-self.maxoffset, self.maxoffset)
 
-            # assing random offset
-            self.result[index] = offset
+                # assing random offset
+                self.result[index] = offset
 
-            # calculate the center in the second image by adding the offset
-            # to the current index
-            center = index[0] + offset[0], index[1] + offset[1]
+                # calculate the center in the second image by adding the offset
+                # to the current index
+                center = index[0] + offset[0], index[1] + offset[1]
 
-            self.quality[index] = ssd(self.image1, index, self.image2, center, self.match_radius)
+                self.quality[index] = ssd(self.image1, index, self.image2, center, self.match_radius)
 
     def iterate(self):
         self.niterations += 1
@@ -202,10 +204,13 @@ if __name__ == '__main__':
         print('  search-ratio:  %f' % args.search_ratio)
         print('')
 
-        print('initialize ...')
         pm = PatchMatch(frame1, frame2,
                         match_radius=args.match_radius, search_ratio=args.search_ratio,
                         maxoffset=args.maxoffset, search_radius=args.search_radius)
+        
+        print('initialize ...')
+        # initialize offsets randomly
+        pm.initialize()
 
         # do some iterations
         for i in xrange(args.iterations):

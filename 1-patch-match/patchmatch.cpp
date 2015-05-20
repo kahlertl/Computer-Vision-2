@@ -92,16 +92,20 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
     // image but with two channels. Each channel stands for an x/y offset
     // of a pixel at this position.
     quality = Mat::zeros(nrows, ncols, CV_32FC1);
-    result = Mat::zeros(nrows, ncols, CV_32FC2); // 2-channel 32-bit floating point
+    flow = Mat::zeros(nrows, ncols, CV_32FC2); // 2-channel 32-bit floating point
 
     initialize(image1, image2);
 
     for (niterations = 0; niterations < iterations; ++niterations) {
-        propagate(image1, image2);
-        random_search(image1, image2);
+        for (int row = border; row < nrows - border ; ++row) {
+            for (int col = border; col < ncols - border; ++col) {
+                propagate(image1, image2, row, col);
+                random_search(image1, image2, row, col);
+            }
+        }
     }
 
-    result.copyTo(dest);
+    flow.copyTo(dest);
 }
 
 void PatchMatch::initialize(const Mat& image1, const Mat& image2)
@@ -117,18 +121,29 @@ void PatchMatch::initialize(const Mat& image1, const Mat& image2)
             offset.x = rand() % (2 * maxoffset) - maxoffset;
             offset.y = rand() % (2 * maxoffset) - maxoffset;
 
-            result.at<Point2f>(row, col) = offset;
+            flow.at<Point2f>(row, col) = offset;
             quality.at<float>(row, col) = ssd(image1, index, image2, index + offset, match_radius);
         }
     }
 }
 
-void PatchMatch::propagate(const cv::Mat &image1, const cv::Mat &image2)
+void PatchMatch::propagate(const cv::Mat &image1, const cv::Mat &image2, const int row, const int col)
 {
-    // TODO: implement propagation
+    // switch between top and left neighbor in even iterations and
+    // right bottom neighbor in odd iterations
+    int direction = (niterations % 2 == 0) ? 1 : -1;
+
+    // top or bottom
+    if (quality.at<float>(row + direction, col) < quality.at<float>(row, col)) {
+        flow.at<Point2f>(row, col) = flow.at<Point2f>(row + direction, col);
+    }
+    // left or right
+    if (quality.at<float>(row, col + direction) < quality.at<float>(row, col)) {
+        flow.at<Point2f>(row, col) = flow.at<Point2f>(row, col + direction);
+    }
 }
 
-void PatchMatch::random_search(const cv::Mat &image1, const cv::Mat &image2)
+void PatchMatch::random_search(const cv::Mat &image1, const cv::Mat &image2, const int row, const int col)
 {
     // TODO: implement random search
 }

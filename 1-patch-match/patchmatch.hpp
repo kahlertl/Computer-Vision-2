@@ -19,14 +19,14 @@ class PatchMatch
 
     int border;
 
-    cv::Mat result;
+    cv::Mat flow;
     cv::Mat quality;
 
     void initialize(const cv::Mat& image1, const cv::Mat& image2);
 
-    void propagate(const cv::Mat& image1, const cv::Mat& image2);
+    void propagate(const cv::Mat& image1, const cv::Mat& image2, const int row, const int col);
 
-    void random_search(const cv::Mat& image1, const cv::Mat& image2);
+    void random_search(const cv::Mat& image1, const cv::Mat& image2, const int row, const int col);
 
 public:
 

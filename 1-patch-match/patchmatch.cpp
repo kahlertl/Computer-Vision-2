@@ -73,56 +73,112 @@ void flow2rgb(const Mat& flow, Mat& rgb)
 
 
 
-PatchMatch::PatchMatch(int maxoffset, int match_radius, int iterations, float search_ratio, int search_radius) :
+PatchMatch::PatchMatch(int maxoffset, int match_radius, int iterations, int pyramid,
+                       float search_ratio, int search_radius) :
     // Parameters
     iterations(iterations),
+    pyramid(pyramid),
     maxoffset(maxoffset),
     match_radius(match_radius),
     search_ratio(search_ratio),
     border(match_radius),
-    max_search_radius(search_radius == -1)
+    max_search_radius(search_radius == -1),
+    search_radius(search_radius)
 {
-    this->search_radius = search_radius;
+    // do nothing
 }
 
 void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
 {
-    nrows = image1.rows;
-    ncols = image1.cols;
+    vector<tuple<Mat, Mat>> levels(pyramid);
+    levels[0] = tuple<Mat, Mat>(image1, image2);
 
-    if (max_search_radius == true) {
-        search_radius = min(nrows, ncols);
+    for (int p = 1; p < pyramid; ++p) {
+        tuple<Mat, Mat> level;
+
+        resize(get<0>(levels[p - 1]), get<0>(level), Size(), 2.0 / 3.0, 2.0 / 3.0);
+        resize(get<1>(levels[p - 1]), get<1>(level), Size(), 2.0 / 3.0, 2.0 / 3.0);
+
+         // imshow("level", get<0>(level));
+         // waitKey();
+
+        cerr << "new level " << p << endl;
+
+        levels[p] = level;
     }
 
-    // create an empty matrix with the same x-y dimensions like the first
-    // image but with two channels. Each channel stands for an x/y offset
-    // of a pixel at this position.
-    flow  = Mat::zeros(nrows, ncols, CV_32FC2); // 2-channel 32-bit floating point
-
-    initialize(image1, image2);
-
-    for (niterations = 0; niterations < iterations; ++niterations) {
-
+    // walk backwards through the pyramid levels
+    for (int p = pyramid - 1; p >= 0; --p) {
         #ifndef NDEBUG
-            cerr << "iteration " << (niterations + 1) << endl;
+            cerr << "Pyramid level " << p << endl;
         #endif
 
-        // for (int row = match_radius; row < nrows - match_radius; ++row) {
-        for (int row = match_radius; row < nrows ; ++row) {
+        Mat frame1 = get<0>(levels[p]);
+        Mat frame2 = get<1>(levels[p]);
+
+        imshow("frame 1", frame1);
+        waitKey();
+
+        nrows = frame1.rows;
+        ncols = frame2.cols;
+
+        if (max_search_radius == true) {
+            search_radius = min(nrows, ncols);
+        }
+
+        // the very first iteration, we have to initialize the offsets randomly
+        if (p == pyramid - 1) {
+            // create an empty matrix with the same x-y dimensions like the first
+            // image but with two channels. Each channel stands for an x/y offset
+            // of a pixel at this position.
+            flow = Mat::zeros(nrows, ncols, CV_32FC2); // 2-channel 32-bit floating point
+
+            cerr << "initialize" << endl;
+            initialize(frame1, frame2);
+        }
+        // in the lower pyramid levels, we can use the prior knowledge and scale the
+        // offset matrix up
+        else {
+            Mat resized;
+            resize(flow, resized, Size(), 3.0 / 2.0, 3.0 / 2.0);
+
+            flow = resized;
+
+            Mat rgb;
+            flow2rgb(flow, rgb);
+            imshow("flow", rgb);
+            waitKey();
+        }
+
+        for (niterations = 0; niterations < iterations; ++niterations) {
 
             #ifndef NDEBUG
-                cerr << "\r" << row;
+                cerr << "iteration " << (niterations + 1) << endl;
             #endif
 
-            for (int col = match_radius; col < ncols - match_radius; ++col) {
-                float cost = propagate(image1, image2, row, col);
-                random_search(image1, image2, row, col, cost);
+            // for (int row = match_radius; row < nrows - match_radius; ++row) {
+            for (int row = match_radius; row < nrows ; ++row) {
+
+                #ifndef NDEBUG
+                    cerr << "\r" << row;
+                #endif
+
+                for (int col = match_radius; col < ncols - match_radius; ++col) {
+                    float cost = propagate(image1, image2, row, col);
+                    random_search(image1, image2, row, col, cost);
+                }
             }
+            #ifndef NDEBUG
+                cerr << "\r";
+            #endif
         }
-        #ifndef NDEBUG
-            cerr << "\r";
-        #endif
+
+        Mat rgb;
+        flow2rgb(flow, rgb);
+        imshow("flow", rgb);
+        waitKey();
     }
+
 
     flow.copyTo(dest);
 }

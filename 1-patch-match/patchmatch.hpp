@@ -14,6 +14,7 @@ class PatchMatch
     const int maxoffset;
     const int match_radius;
     const int iterations;
+    const int pyramid;
     const float search_ratio;
     const bool max_search_radius;
     int search_radius;
@@ -41,12 +42,15 @@ class PatchMatch
 
 public:
 
-    PatchMatch(int maxoffset, int match_radius, int iterations = 3, float search_ratio = 0.5, int search_radius = -1);
+    PatchMatch(int maxoffset, int match_radius, int iterations = 5, int pyramid = 3,
+               float search_ratio = 0.5, int search_radius = -1);
 
     void match(const cv::Mat& image1, const cv::Mat& image2, cv::Mat& result);
 };
 
 void flow2rgb(const cv::Mat& flow, cv::Mat& rgb);
-float ssd(const cv::Mat& image1, const cv::Point2i& center1, const cv::Mat& image2, const cv::Point2i& center2, const int radius, const float halt = std::numeric_limits<float>::infinity());
+
+float ssd(const cv::Mat& image1, const cv::Point2i& center1, const cv::Mat& image2, const cv::Point2i& center2,
+          const int radius, const float halt = std::numeric_limits<float>::infinity());
 
 #endif //CV2_PATCHMATCH_HPP

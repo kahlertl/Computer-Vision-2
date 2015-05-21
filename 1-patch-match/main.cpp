@@ -33,9 +33,11 @@ int main(int argc, const char* argv[])
         return 1;
     }
 
-    PatchMatch pm(20,  // maximal offsets
-                   4,  //
-                   5); // iterations
+    PatchMatch pm(200,  // maximal offsets
+                    4,  //
+                    5,  // iterations
+                    1); // pyramid levels
+
 
     pm.match(image1, image2, result);
 

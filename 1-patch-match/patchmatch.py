@@ -13,7 +13,7 @@ def echo(*args, **kwargs):
     end = kwargs.get('end', '\n')
 
     if len(args) == 1:
-        sys.stdout.write(args[0])
+        sys.stdout.write(str(args[0]))
     else:
         for arg in args:
             sys.stdout.write(str(arg))
@@ -65,6 +65,7 @@ class PatchMatch(object):
         self.search_ratio = search_ratio
         self.search_radius = search_radius or maxoffset
 
+        # TODO: only match radius as border
         self.border = self.match_radius + 2 * self.maxoffset
 
         # create an empty matrix with the same x-y dimensions like the first
@@ -88,6 +89,7 @@ class PatchMatch(object):
         else:
             for index in self:
                 # create a random offset in 
+                # TODO: check offset is inside image
                 offset = random.randint(-self.maxoffset, self.maxoffset), random.randint(-self.maxoffset, self.maxoffset)
 
                 # assing random offset
@@ -111,20 +113,18 @@ class PatchMatch(object):
 
         for row in rows:
             echo("\r%d" % row, end='')
-
-            # if row == 50:
-            #     return
-
             for col in cols:
                 index = row, col
-                self.propagate(index)
-                # self.random_search(index)
+                # echo('index', index, end='')
+                self.propagate(index, neighbor)
+                self.random_search(index)
 
     def propagate(self, index):
         indices = (index,                           # current position
                    (index[0] + self.neighbor, index[1]), # top / bottom neighbor
                    (index[0], index[1] + self.neighbor)) # left / right neighbor
     
+        # TODO: calculate cost
         # create an array of all qualities at the above indices
         qualities = np.array((self.quality[indices[0]],
                               self.quality[indices[1]],
@@ -153,11 +153,12 @@ class PatchMatch(object):
             if distance < 1:
                 break
 
+            # TODO search in interval [-1,-1] x [1,1]
             new_offset = offset + distance * random.choice(SEARCH_FIELD)
 
             # new_offset = (offset[0] + distance * direction[0],
             #               offset[1] + distance * direction[1])
-            center     = index[0] + new_offset[0], index[1] + new_offset[1]
+            center  = index + offset
 
             # print(center)
 
@@ -215,6 +216,7 @@ parser.add_argument('--match-radius', type=int, default=4)
 parser.add_argument('--search-ratio', type=float, default=0.5)
 parser.add_argument('--search-radius', type=int, default=None)
 parser.add_argument('--maxoffset', type=int, default=15)
+parser.add_argument('--pyramid', '-p', type=int, default=1)
 
 if __name__ == '__main__':
     try:
@@ -233,7 +235,7 @@ if __name__ == '__main__':
         pm = PatchMatch(frame1, frame2,
                         match_radius=args.match_radius, search_ratio=args.search_ratio,
                         maxoffset=args.maxoffset, search_radius=args.search_radius)
-        
+
         print('initialize ...')
         # initialize offsets randomly
         pm.initialize()

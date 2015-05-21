@@ -157,13 +157,13 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
             #endif
 
             // for (int row = match_radius; row < nrows - match_radius; ++row) {
-            for (int row = match_radius; row < nrows ; ++row) {
+            for (int row = border; row < nrows - border ; ++row) {
 
                 #ifndef NDEBUG
                     cerr << "\r" << row;
                 #endif
 
-                for (int col = match_radius; col < ncols - match_radius; ++col) {
+                for (int col = border; col < ncols - border; ++col) {
                     float cost = propagate(image1, image2, row, col);
                     random_search(image1, image2, row, col, cost);
                 }

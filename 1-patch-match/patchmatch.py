@@ -8,6 +8,7 @@ import random
 from itertools import product
 import argparse
 import sys
+import math
 
 
 def echo(*args, **kwargs):
@@ -75,17 +76,7 @@ class PatchMatch(object):
         # use precomputed offsets and qualities
         if not prior_knowledge is None:
             # expand prior knowledge to size of result array
-            # result_shape = np.shape(self.result)[0]
-            # prior_shape = np.shape(prior_knowledge)[0]
-            # ratio = float(result_shape) / float(prior_shape)
-            # echo(result_shape, "/", prior_shape, "=", ratio)
-
             self.result = cv2.resize(prior_knowledge, (self.ncols, self.nrows))
-            flow = flow2rgb(self.result)
-            show(flow, wait=True)
-
-
-            # self.result = prior_knowledge
         else:
             for index in self:
                 # create a random offset in 
@@ -235,7 +226,6 @@ if __name__ == '__main__':
         print('  maxoffset:     %d' % args.maxoffset)
         print('  search-radius: %d' % (args.search_radius or min(frame1.shape[:2])))
         print('  search-ratio:  %f' % args.search_ratio)
-        print('  pyramid depth: %d' % args.pyramid)
         print('')
 
         pyramid = [(frame1, frame2)]
@@ -245,11 +235,18 @@ if __name__ == '__main__':
             pyramid.append((cv2.resize(image1, (0,0), fx=0.5, fy=0.5), cv2.resize(image2, (0,0), fx=0.5, fy=0.5)))
 
         for index, images in enumerate(reversed(pyramid)):
+            if (args.pyramid == 1):
+                print("calculating without pyramid")                
+            else:
+                print("pyramid step: %d" % (index + 1))
+            # TODO: reduce iteration numbers in higher pyramid levels
+            iterations = args.iterations
+
             pm = PatchMatch(images[0], images[1],
                         match_radius=args.match_radius, search_ratio=args.search_ratio,
                         maxoffset=args.maxoffset, search_radius=args.search_radius)
 
-            print('initialize ...')
+            print('   initialize ...')
             # initialize offsets randomly
             if index == 0:
                 pm.initialize()
@@ -260,11 +257,12 @@ if __name__ == '__main__':
             flow = flow2rgb(pm.result)
             reconstruction = reconstruct_from_flow(pm.result, frame2)
             merged = merge(flow, reconstruction)
-            cv2.imwrite('flow-it-0.png', merged)
+            name = 'flow-py-%d-it-0.png' % (index + 1)        
+            cv2.imwrite(name, merged)
 
             # do some iterations
-            for i in xrange(args.iterations):
-                print('iteration %d ...' % (i + 1))
+            for i in xrange(int(iterations)):
+                print('   iteration %d ...' % (i + 1))
                 pm.iterate()
 
                 # display progress
@@ -274,14 +272,13 @@ if __name__ == '__main__':
                 reconstruction = reconstruct_from_flow(pm.result, frame2)
                 merged = merge(flow, reconstruction) 
                 # show(merged)
-                name = 'flow-it-%i.png' % (i + 1)
+                name = 'flow-py-%d-it-%i.png' % ((index + 1),(i + 1))
                 cv2.imwrite(name, merged)
 
-            print("result of patchmatch in pyramid step: %d" % (index + 1))
             pyramid_result = pm.result
             flow = flow2rgb(pyramid_result)
             reconstruction = reconstruct_from_flow(pyramid_result, frame2)
-            show(merge(flow, reconstruction), wait=True)
+            # show(merge(flow, reconstruction), wait=True)
 
     except KeyboardInterrupt:
         print('Stopping ...')

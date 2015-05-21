@@ -159,18 +159,33 @@ int main(int argc, const char* argv[])
         return 1;
     }
 
-    #ifndef NDEBUG
-        cerr << "Image size: " << image1.size() << endl;
-    #endif
+    cout << "Parameters:" << endl;
+    cout << "  iterations:     " << iterations << endl;
+    cout << "  pyramid levels: " << pyramid << endl;
+    cout << "  match radius:   " << match_radius << endl;
+    cout << "  search radius:  " << search_radius << endl;
+    cout << "  search ration:  " << search_ratio << endl;
+    cout << endl;
+    cout << "Image size: " << image1.size() << endl << endl;
 
+    // create matcher object
     PatchMatch pm(maxoffset, match_radius, iterations, pyramid, search_ratio, search_radius);
 
+    // use matcher to calculate optical flow
     pm.match(image1, image2, flow);
 
+    // calculate RGB image from the optiocal flow offsets
     flow2rgb(flow, rgb);
 
-    imshow("Optiocal flow", rgb);
-    waitKey();
+    // display result
+    imshow("Optical flow", rgb);
+
+    cout << "Press ESC to exit ..." << endl;
+    while (true) {
+        if ((uchar) waitKey() == 27) {
+            break;
+        }
+    }
 
     return 0;
 }

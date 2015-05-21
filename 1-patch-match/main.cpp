@@ -33,7 +33,9 @@ int main(int argc, const char* argv[])
         return 1;
     }
 
-    PatchMatch pm(20, 4, 2);
+    PatchMatch pm(20,  // maximal offsets
+                   4,  //
+                   5); // iterations
 
     pm.match(image1, image2, result);
 

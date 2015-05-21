@@ -7,15 +7,13 @@
 using namespace std;
 using namespace cv;
 
-float ssd(const Mat& image1, const Point2i& center1, const Mat& image2, const Point2i& center2, const int radius, const float halt)
+float ssd(const Mat& image1, const Point2i& center1, const Mat& image2, const Point2i& center2,
+          const int radius, const float halt)
 {
     float sum = 0;
 
     for (int row = -radius; row <= radius; ++row) {
         for (int col = -radius; col <= radius; ++col) {
-            // cout << (row + center1.y) << "," << (col + center1.x) << endl;
-            // cout << (row + center2.y) << "," << (col + center2.x) << endl;
-    
             const uchar gray1 = image1.at<uchar>(row + center1.y, col + center1.x);
             const uchar gray2 = image2.at<uchar>(row + center2.y, col + center2.x);
 
@@ -27,11 +25,8 @@ float ssd(const Mat& image1, const Point2i& center1, const Mat& image2, const Po
             if (sum > halt) {
                 return sum;
             }
-
         }
     }
-
-//    cout << sum << endl;
 
     return sum;
 }
@@ -99,8 +94,6 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
         search_radius = min(nrows, ncols);
     }
 
-    cout << "search_radius: " << search_radius << endl;
-
     // create an empty matrix with the same x-y dimensions like the first
     // image but with two channels. Each channel stands for an x/y offset
     // of a pixel at this position.
@@ -110,18 +103,25 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
 
     for (niterations = 0; niterations < iterations; ++niterations) {
 
-        cout << "iteration " << niterations << endl;
+        #ifndef NDEBUG
+            cerr << "iteration " << (niterations + 1) << endl;
+        #endif
 
         // for (int row = match_radius; row < nrows - match_radius; ++row) {
         for (int row = match_radius; row < nrows ; ++row) {
 
-            // cerr << row << endl;
+            #ifndef NDEBUG
+                cerr << "\r" << row;
+            #endif
 
             for (int col = match_radius; col < ncols - match_radius; ++col) {
-                propagate(image1, image2, row, col);
-                random_search(image1, image2, row, col);
+                float cost = propagate(image1, image2, row, col);
+                random_search(image1, image2, row, col, cost);
             }
         }
+        #ifndef NDEBUG
+            cerr << "\r";
+        #endif
     }
 
     flow.copyTo(dest);
@@ -146,21 +146,16 @@ void PatchMatch::initialize(const Mat& image1, const Mat& image2)
                 pixel = index + offset;
 
                 // check if the pixel is inside the other image
-                if (border <= pixel.x && pixel.x < ncols - border &&
-                    border <= pixel.y && pixel.y < nrows - border
-                ) {
+                if (in_borders(pixel)) {
                     break;
                 }
             }
-
             flow.at<Point2f>(row, col) = offset;
-
-            // costs.at<float>(row, col) = ssd(image1, index, image2, pixel, match_radius);
         }
     }
 }
 
-void PatchMatch::propagate(const cv::Mat &image1, const cv::Mat &image2, const int row, const int col)
+float PatchMatch::propagate(const cv::Mat &image1, const cv::Mat &image2, const int row, const int col)
 {
     // switch between top and left neighbor in even iterations and
     // right bottom neighbor in odd iterations
@@ -182,13 +177,10 @@ void PatchMatch::propagate(const cv::Mat &image1, const cv::Mat &image2, const i
     // for (int i = 0; i < 3; ++i) {
     //     Point2f center = index + indices[i];
 
-    //     if (border <= center.x && center.x < ncols - border &&
-    //         border <= center.y && center.y < nrows - border
-    //     ) {
+    //     if (in_borders(center)) {
     //         costs[i] = ssd(image1, index, image2, center, match_radius);
     //     } else {
     //         costs[i] = numeric_limits<float>::infinity();
-
     //     }
     // }
 
@@ -205,9 +197,7 @@ void PatchMatch::propagate(const cv::Mat &image1, const cv::Mat &image2, const i
     float costs = ssd(image1, index, image2, pixel, match_radius);
 
     // x-direction (left or right)
-    if (border <= x_neighbor.x && x_neighbor.x < ncols - border &&
-        border <= x_neighbor.y && x_neighbor.y < nrows - border
-    ) {
+    if (in_borders(x_neighbor)) {
         float x_costs = ssd(image1, index, image2, x_neighbor, match_radius);
 
         // update offset if the costs of offset of the neighbor in y-direction
@@ -219,23 +209,24 @@ void PatchMatch::propagate(const cv::Mat &image1, const cv::Mat &image2, const i
     }
 
     // y-direction (top or bottom)
-    if (border <= y_neighbor.x && y_neighbor.x < ncols - border &&
-        border <= y_neighbor.y && y_neighbor.y < nrows - border
-    ) {
+    if (in_borders(y_neighbor)) {
         float y_costs = ssd(image1, index, image2, y_neighbor, match_radius);
 
         // update offset if the costs of offset of the neighbor in y-direction
         // is smaller
         if (y_costs < costs) {
-            // costs = y_costs;
+             costs = y_costs;
             flow.at<Point2f>(row, col) = flow.at<Point2f>(row + direction, col);
         }
     }
+
+    return costs;
 }
 
 
-void PatchMatch::random_search(const cv::Mat &image1, const cv::Mat &image2, const int row, const int col)
+void PatchMatch::random_search(const cv::Mat &image1, const cv::Mat &image2, const int row, const int col, float costs)
 {
+    const Point2f index(col, row);
     int i = 0;
 
     while (true) {
@@ -249,33 +240,27 @@ void PatchMatch::random_search(const cv::Mat &image1, const cv::Mat &image2, con
 
         // cout << col << " " <<  distance << endl;
 
-        Point2f pixel = random_interval();
+        // jump randomly in the interval [-1, 1] x [-1, 1]
+        Point2f offset = random_interval();
+        offset.x *= distance;
+        offset.y *= distance;
 
-        pixel.x *= direction;
-        pixel.y *= direction;
+        // calculate center of pixel in the other image
+        Point2i center = offset + index;
 
-        // pixel.x = 1 - rand() % (RAND_MAX / 2)
+        if (in_borders(center)) {
+            float match = ssd(image1, Point2i(row, col), image2, center, search_radius, costs);
 
-        // const Point2f direction = SEARCH_FIELD[rand() % 8];
-        // const Point2f offset(direction.x * distance,
-        //                      direction.y * distance);
-
-        // const Point2i center(row + (int) offset.x,
-        //                      col + (int) offset.y);
-
-        // check if we are inside image range
-        // if (match_radius < center.x && center.x < nrows - match_radius &&
-        //     match_radius < center.y && center.y < ncols - match_radius) {
-
-        //     float q = ssd(image1, Point2i(row, col), image2, center, search_radius, costs.at<float>(row, col));
-
-        //     float q = 0;
-
-        //     only update if the current match is better
-        //     if (q < quality.at<float>(row, col)) {
-        //         quality.at<float>(row, col) = q;
-        //         flow.at<Point2f>(row, col) = offset;
-        //     }
-        // }
+            // if better match was found, update the current costs and insert the offset
+            if (match < costs) {
+                costs = match;
+                flow.at<Point2f>(index) = offset;
+            }
+        }
     }
+}
+
+bool PatchMatch::in_borders(Point2i point) {
+    return border <= point.x && point.x < ncols - border &&
+           border <= point.y && point.y < nrows - border;
 }

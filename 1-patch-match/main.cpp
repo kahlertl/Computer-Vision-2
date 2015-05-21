@@ -7,33 +7,39 @@
 using namespace cv;
 using namespace std;
 
+// parameters
+static int match_radius  =  4;
+static int maxoffset     = 20;
+static int search_radius = -1;
+static int iterations    =  4;
+static int pyramid       =  3;
+
+// command line option list
+static const struct option long_options[] = {
+    { "help",           no_argument,       0, 'h' },
+    { "maxoffset",      required_argument, 0, 'm' },
+    { "search-radius",  required_argument, 0, 's' },
+    { "iterations",     required_argument, 0, 'i' },
+    { "pyramid",        required_argument, 0, 'p' },
+    { "match-radius",   required_argument, 0, 'r' },
+    0 // end of parameter list
+};
+
 static void usage()
 {
-    cout << "Usage: ./stereo_match [options] left right" << endl;
+    cout << "Usage: patchmatch [options] image1 image2" << endl;
     cout << "  options:" << endl;
     cout << "    -h, --help            Show this help message" << endl;
-    cout << "    -r, --radius          Block radius for stereo matching. Default: 2" << endl;
-    cout << "    -d, --max-disparity   Shrinks the range that will be used" << endl;
-    cout << "                          for block matching. Default: 20" << endl;
-    cout << "    -t, --target          Name of output file. Default: disparity.png" << endl;
-    cout << "    -m, --median          Radius of the median filter applied to " << endl;
-    cout << "                          the disparity map. If 0, this feature is " << endl;
-    cout << "                          disabled. Default: 2" << endl;
-    cout << "    -g, --ground-truth    Optimal disparity image. This activates the" << endl;
-    cout << "                          search for the optimal block size for each pixel." << endl;
-    cout << "                          The radius parameter will be used for the step" << endl;
-    cout << "                          range [0, step]. For each element in the interval" << endl;
-    cout << "                          there will be a match performed with radius = 2^step" << endl;
-    cout << "                             2^step" << endl;
-    cout << "    -c, --correlation     Method for computing correlation. There are:" << endl;
-    cout << "                              ssd  sum of square differences" << endl;
-    cout << "                              sad  sum of absolute differences" << endl;
-    cout << "                              ccr  cross correlation" << endl;
-    cout << "                          Default: sad" << endl;
-    cout << "    -l, --lrc-threshold   Maximal distance in left-right-consistency check." <<  endl;
-    cout << "                          If left and right flow must differ more than this" << endl;
-    cout << "                          parameter, the region is considered as occluded." << endl;
-    cout << "                          If negative, LRC will be disabled. Default: 3" << endl;
+    cout << "    -m, --maxoffset       Maximal offset in x and y direction for each" << endl;
+    cout << "                          pixel. Default: " << maxoffset << endl;
+    cout << "    -r, --radius          Block radius for template matching." << endl;
+    cout << "                          Default: " << match_radius  << endl;
+    cout << "    -s, --search-radius   Block radius for the random search window." << endl;
+    cout << "                          If -1, the whole image will be searched." << endl;
+    cout << "                          Default: " << search_radius << endl;
+    cout << "    -i, --iterations      Number of iterations. Default: " << iterations << endl;
+    cout << "    -p, --pyramid         Number of pyramid levels. Default: " << pyramid << endl;
+
 }
 
 static bool parsePositionalImage(Mat& image, const int channels, const string& name, int argc, char const *argv[])
@@ -63,20 +69,9 @@ int main(int argc, const char* argv[])
 
     Mat image1;
     Mat image2;
-    Mat result;
+    Mat flow;
     Mat rgb;
 
-    const struct option long_options[] = {
-        { "help",           no_argument,       0, 'h' },
-        { "radius",         required_argument, 0, 'r' },
-        { "target",         required_argument, 0, 't' },
-        { "max-disparity",  required_argument, 0, 'd' },
-        { "median",         required_argument, 0, 'm' },
-        { "ground-truth",   required_argument, 0, 'g' },
-        { "correlation",    required_argument, 0, 'c' },
-        { "lrc-threshold",  required_argument, 0, 'l' },
-        0 // end of parameter list
-    };
 
     // parse command line options
     while (true) {
@@ -94,56 +89,44 @@ int main(int argc, const char* argv[])
                 usage();
                 return 0;
 
-            case 'l':
-                lrc_threshold = stoi(string(optarg));
+            case 'm':
+                maxoffset = stoi(string(optarg));
+                if (maxoffset < 0) {
+                    cerr << argv[0] << ": Invalid maximal offset " << optarg << endl;
+                    return 1;
+                }
+                break;
+
+            case 's':
+                search_radius = stoi(string(optarg));
+                if (search_radius < 0) {
+                    cerr << argv[0] << ": Invalid maximal offset " << optarg << endl;
+                    return 1;
+                }
+                break;
+
+            case 'i':
+                iterations = stoi(string(optarg));
+                if (iterations < 0) {
+                    cerr << argv[0] << ": Invalid iterations number " << optarg << endl;
+                    return 1;
+                }
+                break;
+
+            case 'p':
+                pyramid = stoi(string(optarg));
+                if (pyramid < 0) {
+                    cerr << argv[0] << ": Invalid pyramid levels " << optarg << endl;
+                    return 1;
+                }
                 break;
 
             case 'r':
-                radius = stoi(string(optarg));
-                if (radius < 0) {
-                    cerr << argv[0] << ": Invalid radius " << optarg << endl;
+                match_radius = stoi(string(optarg));
+                if (match_radius < 0) {
+                    cerr << argv[0] << ": Invalid match radius " << optarg << endl;
                     return 1;
                 }
-                break;
-
-            case 'd':
-                max_disparity = stoi(string(optarg));
-                if (max_disparity <= 0) {
-                    cerr << argv[0] << ": Invalid maximal disparity " << optarg << endl;
-                    return 1;
-                }
-                break;
-
-            case 't':
-                target = optarg;
-                break;
-
-            case 'm':
-                median_radius = stoi(string(optarg));
-                if (median_radius < 0) {
-                    cerr << argv[0] << ": Invalid median radius " << optarg << endl;
-                    return 1;
-                }
-                break;
-
-            case 'g':
-                ground_truth = imread(optarg, CV_LOAD_IMAGE_GRAYSCALE);
-                break;
-
-            case 'c':
-                match_name = string(optarg);
-
-                if (match_name == "ssd") {
-                    match_fn = &matchSSD;
-                } else if (match_name == "sad") {
-                    match_fn = &matchSAD;
-                } else if (match_name == "ccr") {
-                    match_fn = &matchCCR;
-                } else {
-                    cerr << argv[0] << ": Invalid correlation method '" << optarg << "'" << endl;
-                    return 1;
-                }
-
                 break;
 
             case '?': // missing option
@@ -171,9 +154,9 @@ int main(int argc, const char* argv[])
                     4,  // match radius
                     5); // iterations
 
-    pm.match(image1, image2, result);
+    pm.match(image1, image2, flow);
 
-    flow2rgb(result, rgb);
+    flow2rgb(flow, rgb);
 
     imshow("Optiocal flow", rgb);
     waitKey();

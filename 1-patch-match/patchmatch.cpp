@@ -294,8 +294,6 @@ void PatchMatch::random_search(const cv::Mat &image1, const cv::Mat &image2, con
             break;
         }
 
-        // cout << col << " " <<  distance << endl;
-
         // jump randomly in the interval [-1, 1] x [-1, 1]
         Point2f offset = random_interval();
         offset.x *= distance;
@@ -304,7 +302,10 @@ void PatchMatch::random_search(const cv::Mat &image1, const cv::Mat &image2, con
         // calculate center of pixel in the other image
         Point2i center = offset + index;
 
-        if (in_borders(center)) {
+        // check if the selected offset is valid, that means:
+        //  - it has to be inside the max offset bound
+        //  - must be inside the image
+        if (abs(offset.x) <= maxoffset && abs(offset.y) <= maxoffset &&  in_borders(center)) {
             float match = ssd(image1, Point2i(row, col), image2, center, search_radius, costs);
 
             // if better match was found, update the current costs and insert the offset

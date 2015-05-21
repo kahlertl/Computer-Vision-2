@@ -91,6 +91,7 @@ class PatchMatch(object):
                         break
 
                 # assing random offset
+                
                 self.result[index] = offset
 
 
@@ -114,9 +115,9 @@ class PatchMatch(object):
 
 
     def propagate(self, index):
-        indices = (index,                                # current position
-                   (index[0] + self.neighbor, index[1]), # top / bottom neighbor
-                   (index[0], index[1] + self.neighbor)) # left / right neighbor
+        indices = (index,                               # current position
+                  (index[0] + self.neighbor, index[1]), # top / bottom neighbor
+                  (index[0], index[1] + self.neighbor)) # left / right neighbor
     
         # create an array of all qualities at the above indices
         qualities = np.empty([3])
@@ -157,7 +158,7 @@ class PatchMatch(object):
             new_offset_y = (int) (offset[1] + distance * choice[1])
             new_offset = new_offset_x, new_offset_y
 
-            center  = index + new_offset
+            center  = index[0] + new_offset_x, index[1] + new_offset_y
 
             # check that we do not jump outside the image
             if self.in_border(center):
@@ -224,6 +225,12 @@ if __name__ == '__main__':
         print('  search-ratio:  %f' % args.search_ratio)
         print('')
 
+        pyramid = [(frame1, frame2)]
+
+        for i in xrange(args.pyramid - 1):
+            image1, image2 = pyramid[-1]
+            pyramid.append((cv2.resize(image1, (0,0), fx=0.5, fy=0.5), cv2.resize(image2, (0,0), fx=0.5, fy=0.5)))
+
         pm = PatchMatch(frame1, frame2,
                         match_radius=args.match_radius, search_ratio=args.search_ratio,
                         maxoffset=args.maxoffset, search_radius=args.search_radius)
@@ -232,21 +239,29 @@ if __name__ == '__main__':
         # initialize offsets randomly
         pm.initialize()
 
+        flow = flow2rgb(pm.result)
+        reconstruction = reconstruct_from_flow(pm.result, frame2)
+        merged = merge(flow, reconstruction)
+        cv2.imwrite('flow-it-0.png', merged)
+
         # do some iterations
         for i in xrange(args.iterations):
+            print('iteration %d ...' % (i + 1))
+            pm.iterate()
+
             # display progress
             # we have to convert the integer offsets to floats, because
             # optical flow could be subpixel accurate
             flow = flow2rgb(pm.result)
             reconstruction = reconstruct_from_flow(pm.result, frame2)
-            show(merge(flow, reconstruction))
-
-            print('iteration %d ...' % (i + 1))
-            pm.iterate()
+            merged = merge(flow, reconstruction) 
+            # show(merged)
+            name = 'flow-it-%i.png' % (i + 1)
+            cv2.imwrite(name, merged)
 
         flow = flow2rgb(pm.result)
         reconstruction = reconstruct_from_flow(pm.result, frame2)
-        show(merge(flow, reconstruction))
+        show(merge(flow, reconstruction), True)
 
     except KeyboardInterrupt:
         print('Stopping ...')

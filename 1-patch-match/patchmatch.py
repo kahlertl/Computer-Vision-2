@@ -3,10 +3,12 @@
 import numpy as np
 import cv2
 from visual import load_frames, flow2rgb, show
+from similarity import ssd
 import random
 from itertools import product
 import argparse
 import sys
+import math
 
 
 def echo(*args, **kwargs):
@@ -21,23 +23,6 @@ def echo(*args, **kwargs):
 
     sys.stdout.write(end)
     sys.stdout.flush()
-
-
-def ssd(image1, center1, image2, center2, size):
-    window1 = image1[center1[0] - size : center1[0] + size,
-                     center1[1] - size : center1[1] + size]
-
-    window2 = image2[center2[0] - size : center2[0] + size,
-                     center2[1] - size : center2[1] + size]
-
-    diff = window1 - window2
-
-    return np.sum(diff ** 2)
-
-
-SEARCH_FIELD = np.array(((-1, -1), (-1, 0), (-1, 1),
-                         ( 0, -1),          ( 0, 1),
-                         ( 1, -1), ( 1, 0), ( 1, 1)), dtype=np.float32)
 
 
 class PatchMatch(object):
@@ -66,13 +51,12 @@ class PatchMatch(object):
         self.search_radius = search_radius or maxoffset
 
         # TODO: only match radius as border
-        self.border = self.match_radius + 2 * self.maxoffset
+        self.border = self.match_radius
 
         # create an empty matrix with the same x-y dimensions like the first
         # image but with two channels. Each channel stands for an x/y offset
         # of a pixel at this position.
         self.result  = np.zeros(dtype=np.float32, shape=(self.nrows, self.ncols, 2))
-        self.quality = np.zeros(dtype=np.float32, shape=(self.nrows, self.ncols))
 
 
     def __iter__(self):
@@ -82,24 +66,36 @@ class PatchMatch(object):
         for index in product(rows, cols):
             yield index
 
+
+    def in_border(self, center):
+        return  self.border < center[0] < self.nrows - self.border and \
+                self.border < center[1] < self.ncols - self.border
+
+
     def initialize(self, prior_knowledge=None):
         # use precomputed offsets and qualities
-        if prior_knowledge:
-            self.result, self.quality = prior_knowledge
+        if not prior_knowledge is None:
+            # expand prior knowledge to size of result array
+            self.result = cv2.resize(prior_knowledge, (self.ncols, self.nrows))
         else:
             for index in self:
                 # create a random offset in 
                 # TODO: check offset is inside image
-                offset = random.randint(-self.maxoffset, self.maxoffset), random.randint(-self.maxoffset, self.maxoffset)
+
+                offset = 0
+
+                while (True):
+                    offset = random.randint(-self.maxoffset, self.maxoffset), random.randint(-self.maxoffset, self.maxoffset)
+                    center = index[0] + offset[0], index[1] + offset[1]
+
+                    # check if the center is inside the other image otherwise choose new offset
+                    if self.in_border(center):
+                        break
 
                 # assing random offset
+                
                 self.result[index] = offset
 
-                # calculate the center in the second image by adding the offset
-                # to the current index
-                center = index[0] + offset[0], index[1] + offset[1]
-
-                self.quality[index] = ssd(self.image1, index, self.image2, center, self.match_radius)
 
     def iterate(self):
         self.niterations += 1
@@ -116,20 +112,27 @@ class PatchMatch(object):
             for col in cols:
                 index = row, col
                 # echo('index', index, end='')
-                self.propagate(index, neighbor)
+                self.propagate(index)
                 self.random_search(index)
+            echo("\r", end='')
+
 
     def propagate(self, index):
-        indices = (index,                           # current position
-                   (index[0] + self.neighbor, index[1]), # top / bottom neighbor
-                   (index[0], index[1] + self.neighbor)) # left / right neighbor
+        indices = (index,                               # current position
+                  (index[0] + self.neighbor, index[1]), # top / bottom neighbor
+                  (index[0], index[1] + self.neighbor)) # left / right neighbor
     
-        # TODO: calculate cost
         # create an array of all qualities at the above indices
-        qualities = np.array((self.quality[indices[0]],
-                              self.quality[indices[1]],
-                              self.quality[indices[2]]))
+        qualities = np.empty([3])
 
+        # calculate the quality of the current pixel with the offsets of the neighboring ones
+        for i, neighbor in enumerate(indices):
+            center = index + self.result[neighbor]
+            if self.in_border(center):
+                qualities[i] = ssd(self.image1, index, self.image2, center, self.match_radius)
+            else:
+                qualities[i] = float("inf")
+        
         # get the index of the best quality (smallest distance)
         minindex = indices[np.argmin(qualities)]
 
@@ -137,12 +140,11 @@ class PatchMatch(object):
         if minindex != index:
             self.result[index] = self.result[minindex]
 
-        # show(flow2rgb(np.float32(self.result)))
 
     def random_search(self, index):
         i = 0
         offset = self.result[index]
-        best_quality = self.quality[index]
+        best_quality = ssd(self.image1, index, self.image2, index + offset, self.match_radius)
 
         while True:
             distance = self.search_radius * self.search_ratio ** i
@@ -153,33 +155,25 @@ class PatchMatch(object):
             if distance < 1:
                 break
 
-            # TODO search in interval [-1,-1] x [1,1]
-            new_offset = offset + distance * random.choice(SEARCH_FIELD)
+            choice = random.uniform(-1.0, 1.0), random.uniform(-1.0, 1.0)
 
-            # new_offset = (offset[0] + distance * direction[0],
-            #               offset[1] + distance * direction[1])
-            center  = index + offset
+            new_offset_x = (int) (offset[0] + distance * choice[0])
+            new_offset_y = (int) (offset[1] + distance * choice[1])
+            new_offset = new_offset_x, new_offset_y
 
-            # print(center)
+            center  = index[0] + new_offset_x, index[1] + new_offset_y
 
             # check that we do not jump outside the image
-            if self.border < center[0] < self.nrows - self.border and \
-               self.border < center[1] < self.ncols - self.border:
+            if self.in_border(center):
                 quality = ssd(self.image1, index, self.image2, center, self.match_radius)
 
-
                 if quality < best_quality:
+                    # check that the new offset is not greater than the maximum offset
                     if abs(new_offset[0]) > self.maxoffset and abs(new_offset[1]) > self.maxoffset:
                         continue
+
                     self.result[index] = new_offset
-
-                    # print new_offset
-
-                    self.quality[index] = best_quality
                     best_quality = quality
-
-                    # flow = flow2rgb(self.result)
-                    # show(flow)
 
 
 def reconstruct_from_flow(flow, image):
@@ -191,6 +185,7 @@ def reconstruct_from_flow(flow, image):
         result[index] = image[pixel]
 
     return result
+
 
 def merge(image1, image2):
     # convert images into RGB if they are grayscale
@@ -207,6 +202,7 @@ def merge(image1, image2):
     canvas[ : height2, width1 : width1 + width2] = image2
 
     return canvas
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('image1', help="First frame")
@@ -232,29 +228,57 @@ if __name__ == '__main__':
         print('  search-ratio:  %f' % args.search_ratio)
         print('')
 
-        pm = PatchMatch(frame1, frame2,
+        pyramid = [(frame1, frame2)]
+
+        for i in xrange(args.pyramid - 1):
+            image1, image2 = pyramid[-1]
+            pyramid.append((cv2.resize(image1, (0,0), fx=0.5, fy=0.5), cv2.resize(image2, (0,0), fx=0.5, fy=0.5)))
+
+        for index, images in enumerate(reversed(pyramid)):
+            if (args.pyramid == 1):
+                print("calculating without pyramid")                
+            else:
+                print("pyramid step: %d" % (index + 1))
+            # TODO: reduce iteration numbers in higher pyramid levels
+            iterations = args.iterations
+
+            pm = PatchMatch(images[0], images[1],
                         match_radius=args.match_radius, search_ratio=args.search_ratio,
                         maxoffset=args.maxoffset, search_radius=args.search_radius)
 
-        print('initialize ...')
-        # initialize offsets randomly
-        pm.initialize()
+            print('   initialize ...')
+            # initialize offsets randomly
+            if index == 0:
+                pm.initialize()
+            # initialize offsets with previous pyramid result
+            else:
+                pm.initialize(pyramid_result)
 
-        # do some iterations
-        for i in xrange(args.iterations):
-            # display progress
-            # we have to convert the integer offsets to floats, because
-            # optical flow could be subpixel accurate
             flow = flow2rgb(pm.result)
             reconstruction = reconstruct_from_flow(pm.result, frame2)
-            show(merge(flow, reconstruction))
+            merged = merge(flow, reconstruction)
+            name = 'flow-py-%d-it-0.png' % (index + 1)        
+            cv2.imwrite(name, merged)
 
-            print('iteration %d ...' % (i + 1))
-            pm.iterate()
+            # do some iterations
+            for i in xrange(int(iterations)):
+                print('   iteration %d ...' % (i + 1))
+                pm.iterate()
 
-        flow = flow2rgb(pm.result)
-        reconstruction = reconstruct_from_flow(pm.result, frame2)
-        show(merge(flow, reconstruction))
+                # display progress
+                # we have to convert the integer offsets to floats, because
+                # optical flow could be subpixel accurate
+                flow = flow2rgb(pm.result)
+                reconstruction = reconstruct_from_flow(pm.result, frame2)
+                merged = merge(flow, reconstruction) 
+                # show(merged)
+                name = 'flow-py-%d-it-%i.png' % ((index + 1),(i + 1))
+                cv2.imwrite(name, merged)
+
+            pyramid_result = pm.result
+            flow = flow2rgb(pyramid_result)
+            reconstruction = reconstruct_from_flow(pyramid_result, frame2)
+            # show(merge(flow, reconstruction), wait=True)
 
     except KeyboardInterrupt:
         print('Stopping ...')

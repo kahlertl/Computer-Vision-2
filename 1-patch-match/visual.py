@@ -14,9 +14,10 @@ def wait_esc(msg='Press ESC to continue ...'):
         if cv2.waitKey(0) & 0xff == 27:
             break
 
-def show(img, title='image'):
+def show(img, title='image', wait=False):
     cv2.imshow(title, img)
-    wait_esc()
+    if wait:
+        wait_esc()
     cv2.destroyWindow(title)
 
 def load_frames(filename1, filename2, flags=0):

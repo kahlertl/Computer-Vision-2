@@ -24,11 +24,6 @@ def echo(*args, **kwargs):
     sys.stdout.flush()
 
 
-SEARCH_FIELD = np.array(((-1, -1), (-1, 0), (-1, 1),
-                         ( 0, -1),          ( 0, 1),
-                         ( 1, -1), ( 1, 0), ( 1, 1)), dtype=np.float32)
-
-
 class PatchMatch(object):
     """Dump implementation of the PatchMatch algorithm as described by
 
@@ -115,7 +110,7 @@ class PatchMatch(object):
                 index = row, col
                 # echo('index', index, end='')
                 self.propagate(index)
-                # self.random_search(index)
+                self.random_search(index)
 
 
     def propagate(self, index):
@@ -156,17 +151,17 @@ class PatchMatch(object):
             if distance < 1:
                 break
 
-            # TODO search in interval [-1,-1] x [1,1]
-            new_offset = offset + distance * random.choice(SEARCH_FIELD)
+            choice = random.uniform(-1.0, 1.0), random.uniform(-1.0, 1.0)
 
-            # new_offset = (offset[0] + distance * direction[0],
-            #               offset[1] + distance * direction[1])
-            center  = index + offset
+            new_offset_x = (int) (offset[0] + distance * choice[0])
+            new_offset_y = (int) (offset[1] + distance * choice[1])
+            new_offset = new_offset_x, new_offset_y
+
+            center  = index + new_offset
 
             # check that we do not jump outside the image
             if self.in_border(center):
                 quality = ssd(self.image1, index, self.image2, center, self.match_radius)
-
 
                 if quality < best_quality:
                     # check that the new offset is not greater than the maximum offset

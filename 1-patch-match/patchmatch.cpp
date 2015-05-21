@@ -113,7 +113,7 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
         cout << "iteration " << niterations << endl;
 
         // for (int row = match_radius; row < nrows - match_radius; ++row) {
-        for (int row = match_radius; row < nrows / 2; ++row) {
+        for (int row = match_radius; row < nrows ; ++row) {
 
             // cerr << row << endl;
 
@@ -154,6 +154,7 @@ void PatchMatch::initialize(const Mat& image1, const Mat& image2)
             }
 
             flow.at<Point2f>(row, col) = offset;
+
             // costs.at<float>(row, col) = ssd(image1, index, image2, pixel, match_radius);
         }
     }
@@ -167,15 +168,39 @@ void PatchMatch::propagate(const cv::Mat &image1, const cv::Mat &image2, const i
 
     Point2f index(col, row);
 
-    // top or bottom neighbor
     Point2f pixel      = index + flow.at<Point2f>(row, col);
-    Point2f y_neighbor = index + flow.at<Point2f>(row + direction, col);
-    Point2f x_neighbor = index + flow.at<Point2f>(row , col + direction);
+    Point2f y_neighbor = index + flow.at<Point2f>(row + direction, col);  // top or bottom neighbor
+    Point2f x_neighbor = index + flow.at<Point2f>(row, col + direction);  // left or right neighbor
 
-    // cerr << "index " << index << endl;
-    // cerr << "offset " << flow.at<Point2f>(row, col) << endl;
-    // cerr << "pixel " << pixel << endl;
+    // Point2f indices[3] = {
+    //     flow.at<Point2f>(row, col),
+    //     flow.at<Point2f>(row + direction, col),
+    //     flow.at<Point2f>(row , col + direction)
+    // };
+    // float costs[3];
 
+    // for (int i = 0; i < 3; ++i) {
+    //     Point2f center = index + indices[i];
+
+    //     if (border <= center.x && center.x < ncols - border &&
+    //         border <= center.y && center.y < nrows - border
+    //     ) {
+    //         costs[i] = ssd(image1, index, image2, center, match_radius);
+    //     } else {
+    //         costs[i] = numeric_limits<float>::infinity();
+
+    //     }
+    // }
+
+    // int minindex = 0;
+
+    // for (int i = 1; i < 3; ++i) {
+    //     if (costs[i] < costs[minindex]) {
+    //         minindex = i;
+    //     }
+    // }
+
+    // flow.at<Point2f>(row, col) = indices[minindex];
 
     float costs = ssd(image1, index, image2, pixel, match_radius);
 

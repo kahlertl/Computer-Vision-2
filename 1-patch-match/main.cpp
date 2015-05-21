@@ -8,11 +8,12 @@ using namespace cv;
 using namespace std;
 
 // parameters
-static int match_radius  =  4;
-static int maxoffset     = 20;
-static int search_radius = -1;
-static int iterations    =  4;
-static int pyramid       =  3;
+static int   match_radius  =  4;
+static int   maxoffset     = 20;
+static int   search_radius = -1;
+static int   iterations    =  4;
+static int   pyramid       =  3;
+static float search_ratio  = 0.5;
 
 // command line option list
 static const struct option long_options[] = {
@@ -22,6 +23,7 @@ static const struct option long_options[] = {
     { "iterations",     required_argument, 0, 'i' },
     { "pyramid",        required_argument, 0, 'p' },
     { "match-radius",   required_argument, 0, 'r' },
+    { "search-ratio",   required_argument, 0, 'w' },
     0 // end of parameter list
 };
 
@@ -39,6 +41,9 @@ static void usage()
     cout << "                          Default: " << search_radius << endl;
     cout << "    -i, --iterations      Number of iterations. Default: " << iterations << endl;
     cout << "    -p, --pyramid         Number of pyramid levels. Default: " << pyramid << endl;
+    cout << "    -w, --search-ratio    Fraction that will contract the search window in" << endl;
+    cout << "                          each iteration step. This float must be in the" << endl;
+    cout << "                          interval (0,1). Default: " << search_ratio << endl;
 
 }
 
@@ -129,6 +134,14 @@ int main(int argc, const char* argv[])
                 }
                 break;
 
+            case 'w':
+                search_ratio = stof(string(optarg));
+                if (search_ratio <= 0 || search_ratio >= 1) {
+                    cerr << argv[0] << ": Invalid search ratio " << optarg << endl;
+                    return 1;
+                }
+                break;
+
             case '?': // missing option
                 return 1;
 
@@ -150,9 +163,7 @@ int main(int argc, const char* argv[])
         cerr << "Image size: " << image1.size() << endl;
     #endif
 
-    PatchMatch pm(200,  // maximal offsets
-                    4,  // match radius
-                    5); // iterations
+    PatchMatch pm(maxoffset, match_radius, iterations, pyramid, search_ratio, search_radius);
 
     pm.match(image1, image2, flow);
 

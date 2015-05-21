@@ -1,0 +1,91 @@
+\documentclass[a4paper]{scrartcl}
+
+% UTF-8 encoding
+\usepackage[utf8]{inputenc}
+
+% include 
+\usepackage{graphicx}
+
+% Meta informations
+\title{1 PatchMatch Algorithm}
+\subtitle{Computer Vision 2 \\ TU Dresden}
+\author{Lucas Kahlert}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+
+\section{Visualization}
+
+Like in the Computer vision pracical seminar in the winter semester 2014 we uses
+Gunnar Farneback's algorithm to calculate the dense optical flow.
+
+
+\section{Similarity Measure}
+
+An implementation of the SSD (sum of squared differences) can be found on the Python
+script \texttt{similarity.py}.
+
+For the borders I used the very simple approach to simply skip the radius of the
+matching window. You could also constantly expand the borders or mirror them.
+
+
+\subsection{PatchMatch implementation}
+
+
+\vspace{1cm}
+\begin{minipage}{0.8\textwidth}
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/flow-py-1-it-0.png}
+  \captionof{figure}{Optical flow after initialization}
+\end{minipage}
+
+\vspace{1cm}
+\begin{minipage}{0.8\textwidth}
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/flow-py-1-it-1.png}
+  \captionof{figure}{1. iteration}
+\end{minipage}
+
+\vspace{1cm}
+\begin{minipage}{0.8\textwidth}
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/flow-py-1-it-2.png}
+  \captionof{figure}{2. iteration}
+\end{minipage}
+
+\vspace{1cm}
+\begin{minipage}{0.8\textwidth}
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/flow-py-1-it-3.png}
+  \captionof{figure}{3. iteration}
+\end{minipage}
+
+You can see that the offsets in the first iterations are more and more clustured.
+The small iterations steps have a huge effect on, but the refinements in the higher
+steps becomes less siginificant.
+
+
+\subsection{Image pyramid}
+
+The PatchMatch algorithm does resize the image - which means: blur the image and
+after that resample it - but only do a simple 
+
+
+\subsection{Other similarity meassure}
+
+Another similarity messaure was not implemented, because the effect of this meassurements
+is very small. This insight was already discovered in the Computer Vision pracical seminar
+during the stereo matching task.
+
+
+\subsection{Other similarity meassure}
+
+There are two optiocal flow algorithms in the OpenCV library: the Lucas-Kanade method with pyramids and
+Gunnar Farneback algorithm. The last one was already used for the first exercise. The Lucas-Kanade approach
+does not compute a dense optical flow. It searches for feature points and detects their movement.
+
+
+\end{document}

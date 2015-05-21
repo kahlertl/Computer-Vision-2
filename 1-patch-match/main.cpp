@@ -33,7 +33,7 @@ int main(int argc, const char* argv[])
         return 1;
     }
 
-    PatchMatch pm(10, 5);
+    PatchMatch pm(10, 3);
 
     pm.match(image1, image2, result);
 

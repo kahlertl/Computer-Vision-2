@@ -1,25 +1,37 @@
 #include <opencv2/opencv.hpp>
 #include <cstdlib>     // rand
 #include <iostream>
+#include <numeric> // numeric_limits
 #include "patchmatch.hpp"
 
 using namespace std;
 using namespace cv;
 
-float ssd(const Mat& image1, const Point2i center1, const Mat& image2, const Point2i center2, const int radius)
+float ssd(const Mat& image1, const Point2i& center1, const Mat& image2, const Point2i& center2, const int radius,
 {
     float sum = 0;
 
     for (int row = -radius; row <= radius; ++row) {
         for (int col = -radius; col <= radius; ++col) {
+
+//            cout << row << "," << col << endl;
+
             const uchar gray1 = image1.at<uchar>(row + center1.y, col + center1.x);
             const uchar gray2 = image2.at<uchar>(row + center2.y, col + center2.x);
 
             const float diff  = gray1 - gray2;
 
             sum += diff * diff;
+
+            // early termination
+            if (sum > halt) {
+                return sum;
+            }
+
         }
     }
+
+//    cout << sum << endl;
 
     return sum;
 }
@@ -82,9 +94,11 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
     nrows = image1.rows;
     ncols = image1.cols;
 
-    if (max_search_radius == -1) {
-        this->search_radius = min(nrows, ncols);
+    if (max_search_radius == true) {
+        search_radius = min(nrows, ncols);
     }
+
+    cout << "search_radius: " << search_radius << endl;
 
     border = match_radius + maxoffset;
 
@@ -97,8 +111,17 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
     initialize(image1, image2);
 
     for (niterations = 0; niterations < iterations; ++niterations) {
+
+        cout << "iteration " << niterations << endl;
+
         for (int row = border; row < nrows - border ; ++row) {
+
+            // cerr << row << endl;
+
             for (int col = border; col < ncols - border; ++col) {
+
+                // cout << "    " << col << endl;
+
                 propagate(image1, image2, row, col);
                 random_search(image1, image2, row, col);
             }
@@ -143,7 +166,47 @@ void PatchMatch::propagate(const cv::Mat &image1, const cv::Mat &image2, const i
     }
 }
 
+static Point2f SEARCH_FIELD[8] = {
+    Point2f(-1, -1), Point2f(-1, 0), Point2f(-1, 1),
+    Point2f( 0, -1),                 Point2f( 0, 1),
+    Point2f( 1, -1), Point2f( 1, 0), Point2f( 1, 1)
+};
+
 void PatchMatch::random_search(const cv::Mat &image1, const cv::Mat &image2, const int row, const int col)
 {
-    // TODO: implement random search
+    int i = 0;
+
+    while (true) {
+        const float distance = search_radius * pow(search_ratio, i++);
+
+        // halt condition. search radius must not be smaller
+        // than one pixel
+        if (distance < 1) {
+            break;
+        }
+
+        // cout << col << " " <<  distance << endl;
+
+        const Point2f direction = SEARCH_FIELD[rand() % 8];
+        const Point2f offset(direction.x * distance,
+                             direction.y * distance);
+
+        const Point2i center(row + (int) offset.x,
+                             col + (int) offset.y);
+
+        // check if we are inside image range
+        if (border < center.x && center.x < nrows - border &&
+            border < center.y && center.y < ncols - border) {
+
+             float q = ssd(image1, Point2i(row, col), image2, center, search_radius, quality.at<float>(row, col));
+
+//            float q = 0;
+
+            // only update if the current match is better
+//            if (q < quality.at<float>(row, col)) {
+//                quality.at<float>(row, col) = q;
+//                flow.at<Point2f>(row, col) = offset;
+//            }
+        }
+    }
 }

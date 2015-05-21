@@ -20,6 +20,7 @@ def echo(*args, **kwargs):
             sys.stdout.write(' ')
 
     sys.stdout.write(end)
+    sys.stdout.flush()
 
 
 def ssd(image1, center1, image2, center2, size):
@@ -36,7 +37,7 @@ def ssd(image1, center1, image2, center2, size):
 
 SEARCH_FIELD = np.array(((-1, -1), (-1, 0), (-1, 1),
                          ( 0, -1),          ( 0, 1),
-                         ( 1, -1), ( 1, 0), ( 1, 1)))
+                         ( 1, -1), ( 1, 0), ( 1, 1)), dtype=np.float32)
 
 
 class PatchMatch(object):
@@ -62,14 +63,14 @@ class PatchMatch(object):
         self.maxoffset = maxoffset
         self.match_radius = match_radius
         self.search_ratio = search_ratio
-        self.search_radius = search_radius or min(image1.shape)
+        self.search_radius = search_radius or maxoffset
 
-        self.border = self.match_radius + self.maxoffset
+        self.border = self.match_radius + 2 * self.maxoffset
 
         # create an empty matrix with the same x-y dimensions like the first
         # image but with two channels. Each channel stands for an x/y offset
         # of a pixel at this position.
-        self.result  = np.zeros(dtype=np.int16, shape=(self.nrows, self.ncols, 2))
+        self.result  = np.zeros(dtype=np.float32, shape=(self.nrows, self.ncols, 2))
         self.quality = np.zeros(dtype=np.float32, shape=(self.nrows, self.ncols))
 
 
@@ -83,7 +84,7 @@ class PatchMatch(object):
     def initialize(self, prior_knowledge=None):
         # use precomputed offsets and qualities
         if prior_knowledge:
-            self.result, self.quality = prior_yknowledge
+            self.result, self.quality = prior_knowledge
         else:
             for index in self:
                 # create a random offset in 
@@ -103,19 +104,26 @@ class PatchMatch(object):
 
         # switch between top and left neighbor in even iterations and
         # right bottom neighbor in odd iterations
-        neighbor = -1 if self.niterations % 2 == 0 else 1
+        self.neighbor = -1 if self.niterations % 2 == 0 else 1
 
-        for index in self:
-            # echo('\r', end='')
-            # echo('index', index, end='')
-            self.propagate(index, neighbor)
-        for index in self:
-            self.random_search(index)
+        rows = xrange(self.border, self.nrows - self.border)
+        cols = xrange(self.border, self.ncols - self.border)
 
-    def propagate(self, index, neighbor):
+        for row in rows:
+            echo("\r%d" % row, end='')
+
+            # if row == 50:
+            #     return
+
+            for col in cols:
+                index = row, col
+                self.propagate(index)
+                # self.random_search(index)
+
+    def propagate(self, index):
         indices = (index,                           # current position
-                   (index[0] + neighbor, index[1]), # top / bottom neighbor
-                   (index[0], index[1] + neighbor)) # left / right neighbor
+                   (index[0] + self.neighbor, index[1]), # top / bottom neighbor
+                   (index[0], index[1] + self.neighbor)) # left / right neighbor
     
         # create an array of all qualities at the above indices
         qualities = np.array((self.quality[indices[0]],
@@ -129,12 +137,15 @@ class PatchMatch(object):
         if minindex != index:
             self.result[index] = self.result[minindex]
 
+        # show(flow2rgb(np.float32(self.result)))
+
     def random_search(self, index):
         i = 0
+        offset = self.result[index]
         best_quality = self.quality[index]
 
         while True:
-            distance = int(self.search_radius * self.search_ratio ** i)
+            distance = self.search_radius * self.search_ratio ** i
             i += 1
 
             # halt condition. search radius must not be smaller
@@ -142,17 +153,32 @@ class PatchMatch(object):
             if distance < 1:
                 break
 
-            offset  = distance * random.choice(SEARCH_FIELD)
-            center  = index + offset
+            new_offset = offset + distance * random.choice(SEARCH_FIELD)
+
+            # new_offset = (offset[0] + distance * direction[0],
+            #               offset[1] + distance * direction[1])
+            center     = index[0] + new_offset[0], index[1] + new_offset[1]
+
+            # print(center)
 
             # check that we do not jump outside the image
             if self.border < center[0] < self.nrows - self.border and \
                self.border < center[1] < self.ncols - self.border:
                 quality = ssd(self.image1, index, self.image2, center, self.match_radius)
 
+
                 if quality < best_quality:
-                    self.result[index] = offset
+                    if abs(new_offset[0]) > self.maxoffset and abs(new_offset[1]) > self.maxoffset:
+                        continue
+                    self.result[index] = new_offset
+
+                    # print new_offset
+
+                    self.quality[index] = best_quality
                     best_quality = quality
+
+                    # flow = flow2rgb(self.result)
+                    # show(flow)
 
 
 def reconstruct_from_flow(flow, image):
@@ -217,14 +243,14 @@ if __name__ == '__main__':
             # display progress
             # we have to convert the integer offsets to floats, because
             # optical flow could be subpixel accurate
-            flow = flow2rgb(np.float32(pm.result))
+            flow = flow2rgb(pm.result)
             reconstruction = reconstruct_from_flow(pm.result, frame2)
             show(merge(flow, reconstruction))
 
             print('iteration %d ...' % (i + 1))
             pm.iterate()
 
-        flow = flow2rgb(np.float32(pm.result))
+        flow = flow2rgb(pm.result)
         reconstruction = reconstruct_from_flow(pm.result, frame2)
         show(merge(flow, reconstruction))
 

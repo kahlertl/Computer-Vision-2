@@ -3,6 +3,7 @@
 import numpy as np
 import cv2
 from visual import load_frames, flow2rgb, show
+from similarity import ssd
 import random
 from itertools import product
 import argparse
@@ -21,18 +22,6 @@ def echo(*args, **kwargs):
 
     sys.stdout.write(end)
     sys.stdout.flush()
-
-
-def ssd(image1, center1, image2, center2, size):
-    window1 = image1[center1[0] - size : center1[0] + size,
-                     center1[1] - size : center1[1] + size]
-
-    window2 = image2[center2[0] - size : center2[0] + size,
-                     center2[1] - size : center2[1] + size]
-
-    diff = window1 - window2
-
-    return np.sum(diff ** 2)
 
 
 SEARCH_FIELD = np.array(((-1, -1), (-1, 0), (-1, 1),
@@ -72,7 +61,6 @@ class PatchMatch(object):
         # image but with two channels. Each channel stands for an x/y offset
         # of a pixel at this position.
         self.result  = np.zeros(dtype=np.float32, shape=(self.nrows, self.ncols, 2))
-        self.quality = np.zeros(dtype=np.float32, shape=(self.nrows, self.ncols))
 
 
     def __iter__(self):
@@ -82,10 +70,11 @@ class PatchMatch(object):
         for index in product(rows, cols):
             yield index
 
+
     def initialize(self, prior_knowledge=None):
         # use precomputed offsets and qualities
         if prior_knowledge:
-            self.result, self.quality = prior_knowledge
+            self.result = prior_knowledge
         else:
             for index in self:
                 # create a random offset in 
@@ -99,7 +88,6 @@ class PatchMatch(object):
                 # to the current index
                 center = index[0] + offset[0], index[1] + offset[1]
 
-                self.quality[index] = ssd(self.image1, index, self.image2, center, self.match_radius)
 
     def iterate(self):
         self.niterations += 1
@@ -116,20 +104,20 @@ class PatchMatch(object):
             for col in cols:
                 index = row, col
                 # echo('index', index, end='')
-                self.propagate(index, neighbor)
+                self.propagate(index)
                 self.random_search(index)
+
 
     def propagate(self, index):
         indices = (index,                           # current position
                    (index[0] + self.neighbor, index[1]), # top / bottom neighbor
                    (index[0], index[1] + self.neighbor)) # left / right neighbor
     
-        # TODO: calculate cost
         # create an array of all qualities at the above indices
-        qualities = np.array((self.quality[indices[0]],
-                              self.quality[indices[1]],
-                              self.quality[indices[2]]))
-
+        qualities = np.empty([3])
+        for i in xrange(0,3):
+            qualities[i] = ssd(self.image1, indices[i], self.image2, indices[i] + self.result[indices[i]], self.match_radius)
+        
         # get the index of the best quality (smallest distance)
         minindex = indices[np.argmin(qualities)]
 
@@ -137,12 +125,11 @@ class PatchMatch(object):
         if minindex != index:
             self.result[index] = self.result[minindex]
 
-        # show(flow2rgb(np.float32(self.result)))
 
     def random_search(self, index):
         i = 0
         offset = self.result[index]
-        best_quality = self.quality[index]
+        best_quality = ssd(self.image1, index, self.image2, index + offset, self.match_radius)
 
         while True:
             distance = self.search_radius * self.search_ratio ** i
@@ -160,8 +147,6 @@ class PatchMatch(object):
             #               offset[1] + distance * direction[1])
             center  = index + offset
 
-            # print(center)
-
             # check that we do not jump outside the image
             if self.border < center[0] < self.nrows - self.border and \
                self.border < center[1] < self.ncols - self.border:
@@ -169,17 +154,12 @@ class PatchMatch(object):
 
 
                 if quality < best_quality:
+                    # check that the new offset is not greater than the maximum offset
                     if abs(new_offset[0]) > self.maxoffset and abs(new_offset[1]) > self.maxoffset:
                         continue
+
                     self.result[index] = new_offset
-
-                    # print new_offset
-
-                    self.quality[index] = best_quality
                     best_quality = quality
-
-                    # flow = flow2rgb(self.result)
-                    # show(flow)
 
 
 def reconstruct_from_flow(flow, image):
@@ -191,6 +171,7 @@ def reconstruct_from_flow(flow, image):
         result[index] = image[pixel]
 
     return result
+
 
 def merge(image1, image2):
     # convert images into RGB if they are grayscale
@@ -207,6 +188,7 @@ def merge(image1, image2):
     canvas[ : height2, width1 : width1 + width2] = image2
 
     return canvas
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('image1', help="First frame")

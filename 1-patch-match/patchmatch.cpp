@@ -119,7 +119,7 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
 
             for (int col = match_radius; col < ncols - match_radius; ++col) {
                 propagate(image1, image2, row, col);
-                // random_search(image1, image2, row, col);
+                random_search(image1, image2, row, col);
             }
         }
     }
@@ -233,11 +233,6 @@ void PatchMatch::propagate(const cv::Mat &image1, const cv::Mat &image2, const i
     }
 }
 
-static Point2f SEARCH_FIELD[8] = {
-    Point2f(-1, -1), Point2f(-1, 0), Point2f(-1, 1),
-    Point2f( 0, -1),                 Point2f( 0, 1),
-    Point2f( 1, -1), Point2f( 1, 0), Point2f( 1, 1)
-};
 
 void PatchMatch::random_search(const cv::Mat &image1, const cv::Mat &image2, const int row, const int col)
 {
@@ -254,12 +249,19 @@ void PatchMatch::random_search(const cv::Mat &image1, const cv::Mat &image2, con
 
         // cout << col << " " <<  distance << endl;
 
-        const Point2f direction = SEARCH_FIELD[rand() % 8];
-        const Point2f offset(direction.x * distance,
-                             direction.y * distance);
+        Point2f pixel = random_interval();
 
-        const Point2i center(row + (int) offset.x,
-                             col + (int) offset.y);
+        pixel.x *= direction;
+        pixel.y *= direction;
+
+        // pixel.x = 1 - rand() % (RAND_MAX / 2)
+
+        // const Point2f direction = SEARCH_FIELD[rand() % 8];
+        // const Point2f offset(direction.x * distance,
+        //                      direction.y * distance);
+
+        // const Point2i center(row + (int) offset.x,
+        //                      col + (int) offset.y);
 
         // check if we are inside image range
         // if (match_radius < center.x && center.x < nrows - match_radius &&

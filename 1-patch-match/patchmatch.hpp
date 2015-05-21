@@ -28,6 +28,19 @@ class PatchMatch
 
     void random_search(const cv::Mat& image1, const cv::Mat& image2, const int row, const int col);
 
+    /**
+     * Creates a random point in the interval [-1, 1] x [-1, 1]
+     */
+    inline cv::Point2f random_interval()
+    {
+        return cv::Point2f(0, 0);
+
+        // return cv::Point2f(
+        //     (float) std::rand() / ((float) std::RAND_MAX / 2) - 1.0, // x
+        //     (float) std::rand() / ((float) std::RAND_MAX / 2) - 1.0  // y
+        // );
+    }
+
 public:
 
     PatchMatch(int maxoffset, int match_radius, int iterations = 3, float search_ratio = 0.5, int search_radius = -1);

@@ -73,8 +73,19 @@ class PatchMatch(object):
 
     def initialize(self, prior_knowledge=None):
         # use precomputed offsets and qualities
-        if prior_knowledge:
-            self.result = prior_knowledge
+        if not prior_knowledge is None:
+            # expand prior knowledge to size of result array
+            # result_shape = np.shape(self.result)[0]
+            # prior_shape = np.shape(prior_knowledge)[0]
+            # ratio = float(result_shape) / float(prior_shape)
+            # echo(result_shape, "/", prior_shape, "=", ratio)
+
+            self.result = cv2.resize(prior_knowledge, (self.ncols, self.nrows))
+            flow = flow2rgb(self.result)
+            show(flow, wait=True)
+
+
+            # self.result = prior_knowledge
         else:
             for index in self:
                 # create a random offset in 
@@ -112,6 +123,7 @@ class PatchMatch(object):
                 # echo('index', index, end='')
                 self.propagate(index)
                 self.random_search(index)
+            echo("\r", end='')
 
 
     def propagate(self, index):
@@ -223,6 +235,7 @@ if __name__ == '__main__':
         print('  maxoffset:     %d' % args.maxoffset)
         print('  search-radius: %d' % (args.search_radius or min(frame1.shape[:2])))
         print('  search-ratio:  %f' % args.search_ratio)
+        print('  pyramid depth: %d' % args.pyramid)
         print('')
 
         pyramid = [(frame1, frame2)]
@@ -231,37 +244,44 @@ if __name__ == '__main__':
             image1, image2 = pyramid[-1]
             pyramid.append((cv2.resize(image1, (0,0), fx=0.5, fy=0.5), cv2.resize(image2, (0,0), fx=0.5, fy=0.5)))
 
-        pm = PatchMatch(frame1, frame2,
+        for index, images in enumerate(reversed(pyramid)):
+            pm = PatchMatch(images[0], images[1],
                         match_radius=args.match_radius, search_ratio=args.search_ratio,
                         maxoffset=args.maxoffset, search_radius=args.search_radius)
 
-        print('initialize ...')
-        # initialize offsets randomly
-        pm.initialize()
+            print('initialize ...')
+            # initialize offsets randomly
+            if index == 0:
+                pm.initialize()
+            # initialize offsets with previous pyramid result
+            else:
+                pm.initialize(pyramid_result)
 
-        flow = flow2rgb(pm.result)
-        reconstruction = reconstruct_from_flow(pm.result, frame2)
-        merged = merge(flow, reconstruction)
-        cv2.imwrite('flow-it-0.png', merged)
-
-        # do some iterations
-        for i in xrange(args.iterations):
-            print('iteration %d ...' % (i + 1))
-            pm.iterate()
-
-            # display progress
-            # we have to convert the integer offsets to floats, because
-            # optical flow could be subpixel accurate
             flow = flow2rgb(pm.result)
             reconstruction = reconstruct_from_flow(pm.result, frame2)
-            merged = merge(flow, reconstruction) 
-            # show(merged)
-            name = 'flow-it-%i.png' % (i + 1)
-            cv2.imwrite(name, merged)
+            merged = merge(flow, reconstruction)
+            cv2.imwrite('flow-it-0.png', merged)
 
-        flow = flow2rgb(pm.result)
-        reconstruction = reconstruct_from_flow(pm.result, frame2)
-        show(merge(flow, reconstruction), True)
+            # do some iterations
+            for i in xrange(args.iterations):
+                print('iteration %d ...' % (i + 1))
+                pm.iterate()
+
+                # display progress
+                # we have to convert the integer offsets to floats, because
+                # optical flow could be subpixel accurate
+                flow = flow2rgb(pm.result)
+                reconstruction = reconstruct_from_flow(pm.result, frame2)
+                merged = merge(flow, reconstruction) 
+                # show(merged)
+                name = 'flow-it-%i.png' % (i + 1)
+                cv2.imwrite(name, merged)
+
+            print("result of patchmatch in pyramid step: %d" % (index + 1))
+            pyramid_result = pm.result
+            flow = flow2rgb(pyramid_result)
+            reconstruction = reconstruct_from_flow(pyramid_result, frame2)
+            show(merge(flow, reconstruction), wait=True)
 
     except KeyboardInterrupt:
         print('Stopping ...')

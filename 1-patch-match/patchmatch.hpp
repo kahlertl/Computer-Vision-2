@@ -21,7 +21,6 @@ class PatchMatch
     int border;
 
     cv::Mat flow;
-    cv::Mat costs;
 
     void initialize(const cv::Mat& image1, const cv::Mat& image2);
 

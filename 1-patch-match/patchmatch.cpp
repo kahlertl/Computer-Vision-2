@@ -108,13 +108,13 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
         #endif
 
         // for (int row = match_radius; row < nrows - match_radius; ++row) {
-        for (int row = match_radius; row < nrows ; ++row) {
+        for (int row = border; row < nrows - border; ++row) {
 
             #ifndef NDEBUG
                 cerr << "\r" << row;
             #endif
 
-            for (int col = match_radius; col < ncols - match_radius; ++col) {
+            for (int col = border; col < ncols - border; ++col) {
                 float cost = propagate(image1, image2, row, col);
                 random_search(image1, image2, row, col, cost);
             }
@@ -163,10 +163,6 @@ float PatchMatch::propagate(const cv::Mat &image1, const cv::Mat &image2, const 
 
     Point2f index(col, row);
 
-    Point2f pixel      = index + flow.at<Point2f>(row, col);
-    Point2f y_neighbor = index + flow.at<Point2f>(row + direction, col);  // top or bottom neighbor
-    Point2f x_neighbor = index + flow.at<Point2f>(row, col + direction);  // left or right neighbor
-
     // Point2f indices[3] = {
     //     flow.at<Point2f>(row, col),
     //     flow.at<Point2f>(row + direction, col),
@@ -193,6 +189,10 @@ float PatchMatch::propagate(const cv::Mat &image1, const cv::Mat &image2, const 
     // }
 
     // flow.at<Point2f>(row, col) = indices[minindex];
+
+    Point2f pixel      = index + flow.at<Point2f>(row, col);
+    Point2f y_neighbor = index + flow.at<Point2f>(row + direction, col);  // top or bottom neighbor
+    Point2f x_neighbor = index + flow.at<Point2f>(row, col + direction);  // left or right neighbor
 
     float costs = ssd(image1, index, image2, pixel, match_radius);
 

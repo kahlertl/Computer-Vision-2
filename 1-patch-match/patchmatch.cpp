@@ -140,7 +140,7 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
         // offset matrix up
         else {
             Mat resized;
-            resize(flow, resized, Size(), 3.0 / 2.0, 3.0 / 2.0);
+            resize(flow, resized, frame1.size());
 
             flow = resized;
 
@@ -164,8 +164,8 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
                 #endif
 
                 for (int col = border; col < ncols - border; ++col) {
-                    float cost = propagate(image1, image2, row, col);
-                    random_search(image1, image2, row, col, cost);
+                    float cost = propagate(frame1, frame2, row, col);
+                    random_search(frame1, frame2, row, col, cost);
                 }
             }
             #ifndef NDEBUG

@@ -2,6 +2,7 @@
 #define CV2_PATCHMATCH_HPP
 
 #include <opencv2/opencv.hpp>
+#include <limits>
 
 class PatchMatch
 {
@@ -20,7 +21,7 @@ class PatchMatch
     int border;
 
     cv::Mat flow;
-    cv::Mat quality;
+    cv::Mat costs;
 
     void initialize(const cv::Mat& image1, const cv::Mat& image2);
 
@@ -36,5 +37,6 @@ public:
 };
 
 void flow2rgb(const cv::Mat& flow, cv::Mat& rgb);
+float ssd(const cv::Mat& image1, const cv::Point2i& center1, const cv::Mat& image2, const cv::Point2i& center2, const int radius, const float halt = std::numeric_limits<float>::infinity());
 
 #endif //CV2_PATCHMATCH_HPP

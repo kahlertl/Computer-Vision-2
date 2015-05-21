@@ -7,15 +7,15 @@
 using namespace std;
 using namespace cv;
 
-float ssd(const Mat& image1, const Point2i& center1, const Mat& image2, const Point2i& center2, const int radius,
+float ssd(const Mat& image1, const Point2i& center1, const Mat& image2, const Point2i& center2, const int radius, const float halt)
 {
     float sum = 0;
 
     for (int row = -radius; row <= radius; ++row) {
         for (int col = -radius; col <= radius; ++col) {
-
-//            cout << row << "," << col << endl;
-
+            // cout << (row + center1.y) << "," << (col + center1.x) << endl;
+            // cout << (row + center2.y) << "," << (col + center2.x) << endl;
+    
             const uchar gray1 = image1.at<uchar>(row + center1.y, col + center1.x);
             const uchar gray2 = image2.at<uchar>(row + center2.y, col + center2.x);
 
@@ -84,6 +84,7 @@ PatchMatch::PatchMatch(int maxoffset, int match_radius, int iterations, float se
     maxoffset(maxoffset),
     match_radius(match_radius),
     search_ratio(search_ratio),
+    border(match_radius),
     max_search_radius(search_radius == -1)
 {
     this->search_radius = search_radius;
@@ -100,33 +101,31 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
 
     cout << "search_radius: " << search_radius << endl;
 
-    border = match_radius + maxoffset;
-
     // create an empty matrix with the same x-y dimensions like the first
     // image but with two channels. Each channel stands for an x/y offset
     // of a pixel at this position.
-    quality = Mat::zeros(nrows, ncols, CV_32FC1);
-    flow = Mat::zeros(nrows, ncols, CV_32FC2); // 2-channel 32-bit floating point
+    costs = Mat::zeros(nrows, ncols, CV_32FC1);
+    flow  = Mat::zeros(nrows, ncols, CV_32FC2); // 2-channel 32-bit floating point
 
     initialize(image1, image2);
 
-    for (niterations = 0; niterations < iterations; ++niterations) {
+    // for (niterations = 0; niterations < iterations; ++niterations) {
 
-        cout << "iteration " << niterations << endl;
+    //     cout << "iteration " << niterations << endl;
 
-        for (int row = border; row < nrows - border ; ++row) {
+    //     for (int row = match_radius; row < nrows - match_radius ; ++row) {
 
-            // cerr << row << endl;
+    //         // cerr << row << endl;
 
-            for (int col = border; col < ncols - border; ++col) {
+    //         for (int col = match_radius; col < ncols - match_radius; ++col) {
 
-                // cout << "    " << col << endl;
+    //             // cout << "    " << col << endl;
 
-                propagate(image1, image2, row, col);
-                random_search(image1, image2, row, col);
-            }
-        }
-    }
+    //             propagate(image1, image2, row, col);
+    //             // random_search(image1, image2, row, col);
+    //         }
+    //     }
+    // }
 
     flow.copyTo(dest);
 }
@@ -135,17 +134,41 @@ void PatchMatch::initialize(const Mat& image1, const Mat& image2)
 {
     Point2i offset;
     Point2i index;
+    Point2i center;
 
     for (int row = border; row < nrows - border ; ++row) {
         for (int col = border; col < ncols - border ; ++col) {
-            index.x = row;
-            index.y = col;
+            index.x = col;
+            index.y = row;
 
-            offset.x = rand() % (2 * maxoffset) - maxoffset;
-            offset.y = rand() % (2 * maxoffset) - maxoffset;
+            // cerr << "index " << index << endl;
+
+            while (true) {
+                offset.x = rand() % (2 * maxoffset) - maxoffset;
+                offset.y = rand() % (2 * maxoffset) - maxoffset;
+
+                // cerr << "offset " << offset << endl;
+
+                center = index + offset;
+
+                // check if the center is inside the other image
+                if (border <= center.x && center.x < ncols - border &&
+                    border <= center.y && center.y < nrows - border
+                ) {
+                    // cerr << "break" << endl;
+                    break;
+                } else {
+                    // cerr << index << " + " << offset << " = " << center << endl;
+
+                    // cerr << border << " <= " << center.x << " && " << center.x << " < " << ncols << " - " << border << endl;
+                    // cerr << border << " <= " << center.y << " && " << center.y << " < " << nrows << " - " << border << endl;
+                }
+            }
+
+            // cerr << "offset " << offset << endl;
 
             flow.at<Point2f>(row, col) = offset;
-            quality.at<float>(row, col) = ssd(image1, index, image2, index + offset, match_radius);
+            costs.at<float>(row, col) = ssd(image1, index, image2, center, match_radius);
         }
     }
 }
@@ -157,11 +180,11 @@ void PatchMatch::propagate(const cv::Mat &image1, const cv::Mat &image2, const i
     int direction = (niterations % 2 == 0) ? 1 : -1;
 
     // top or bottom
-    if (quality.at<float>(row + direction, col) < quality.at<float>(row, col)) {
+    if (costs.at<float>(row + direction, col) < costs.at<float>(row, col)) {
         flow.at<Point2f>(row, col) = flow.at<Point2f>(row + direction, col);
     }
     // left or right
-    if (quality.at<float>(row, col + direction) < quality.at<float>(row, col)) {
+    if (costs.at<float>(row, col + direction) < costs.at<float>(row, col)) {
         flow.at<Point2f>(row, col) = flow.at<Point2f>(row, col + direction);
     }
 }
@@ -195,10 +218,10 @@ void PatchMatch::random_search(const cv::Mat &image1, const cv::Mat &image2, con
                              col + (int) offset.y);
 
         // check if we are inside image range
-        if (border < center.x && center.x < nrows - border &&
-            border < center.y && center.y < ncols - border) {
+        if (match_radius < center.x && center.x < nrows - match_radius &&
+            match_radius < center.y && center.y < ncols - match_radius) {
 
-             float q = ssd(image1, Point2i(row, col), image2, center, search_radius, quality.at<float>(row, col));
+             float q = ssd(image1, Point2i(row, col), image2, center, search_radius, costs.at<float>(row, col));
 
 //            float q = 0;
 

@@ -55,7 +55,7 @@ class PatchMatch(object):
         self.search_radius = search_radius or maxoffset
 
         # TODO: only match radius as border
-        self.border = self.match_radius + 2 * self.maxoffset
+        self.border = self.match_radius
 
         # create an empty matrix with the same x-y dimensions like the first
         # image but with two channels. Each channel stands for an x/y offset
@@ -71,6 +71,11 @@ class PatchMatch(object):
             yield index
 
 
+    def in_border(self, center):
+        return  self.border < center[0] < self.nrows - self.border and \
+                self.border < center[1] < self.ncols - self.border
+
+
     def initialize(self, prior_knowledge=None):
         # use precomputed offsets and qualities
         if prior_knowledge:
@@ -79,14 +84,19 @@ class PatchMatch(object):
             for index in self:
                 # create a random offset in 
                 # TODO: check offset is inside image
-                offset = random.randint(-self.maxoffset, self.maxoffset), random.randint(-self.maxoffset, self.maxoffset)
+
+                offset = 0
+
+                while (True):
+                    offset = random.randint(-self.maxoffset, self.maxoffset), random.randint(-self.maxoffset, self.maxoffset)
+                    center = index[0] + offset[0], index[1] + offset[1]
+
+                    # check if the center is inside the other image otherwise choose new offset
+                    if self.in_border(center):
+                        break
 
                 # assing random offset
                 self.result[index] = offset
-
-                # calculate the center in the second image by adding the offset
-                # to the current index
-                center = index[0] + offset[0], index[1] + offset[1]
 
 
     def iterate(self):
@@ -105,18 +115,24 @@ class PatchMatch(object):
                 index = row, col
                 # echo('index', index, end='')
                 self.propagate(index)
-                self.random_search(index)
+                # self.random_search(index)
 
 
     def propagate(self, index):
-        indices = (index,                           # current position
+        indices = (index,                                # current position
                    (index[0] + self.neighbor, index[1]), # top / bottom neighbor
                    (index[0], index[1] + self.neighbor)) # left / right neighbor
     
         # create an array of all qualities at the above indices
         qualities = np.empty([3])
-        for i in xrange(0,3):
-            qualities[i] = ssd(self.image1, indices[i], self.image2, indices[i] + self.result[indices[i]], self.match_radius)
+
+        # calculate the quality of the current pixel with the offsets of the neighboring ones
+        for i, neighbor in enumerate(indices):
+            center = index + self.result[neighbor]
+            if self.in_border(center):
+                qualities[i] = ssd(self.image1, index, self.image2, center, self.match_radius)
+            else:
+                qualities[i] = float("inf")
         
         # get the index of the best quality (smallest distance)
         minindex = indices[np.argmin(qualities)]
@@ -148,8 +164,7 @@ class PatchMatch(object):
             center  = index + offset
 
             # check that we do not jump outside the image
-            if self.border < center[0] < self.nrows - self.border and \
-               self.border < center[1] < self.ncols - self.border:
+            if self.in_border(center):
                 quality = ssd(self.image1, index, self.image2, center, self.match_radius)
 
 

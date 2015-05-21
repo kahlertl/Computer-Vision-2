@@ -44,7 +44,6 @@ static void usage()
     cout << "    -w, --search-ratio    Fraction that will contract the search window in" << endl;
     cout << "                          each iteration step. This float must be in the" << endl;
     cout << "                          interval (0,1). Default: " << search_ratio << endl;
-
 }
 
 static bool parsePositionalImage(Mat& image, const int channels, const string& name, int argc, char const *argv[])

@@ -99,11 +99,6 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
         resize(get<0>(levels[p - 1]), get<0>(level), Size(), 2.0 / 3.0, 2.0 / 3.0);
         resize(get<1>(levels[p - 1]), get<1>(level), Size(), 2.0 / 3.0, 2.0 / 3.0);
 
-         // imshow("level", get<0>(level));
-         // waitKey();
-
-        cerr << "new level " << p << endl;
-
         levels[p] = level;
     }
 
@@ -116,12 +111,14 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
         Mat frame1 = get<0>(levels[p]);
         Mat frame2 = get<1>(levels[p]);
 
-        imshow("frame 1", frame1);
-        waitKey();
-
+        // update dimensions
         nrows = frame1.rows;
         ncols = frame2.cols;
 
+        // TODO: Maybe we should adapt the maxoffset to the pyramid level?
+
+        // if the initial search radius was set to "-1" we use
+        // the image dimensions as search window
         if (max_search_radius == true) {
             search_radius = min(nrows, ncols);
         }
@@ -133,7 +130,6 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
             // of a pixel at this position.
             flow = Mat::zeros(nrows, ncols, CV_32FC2); // 2-channel 32-bit floating point
 
-            cerr << "initialize" << endl;
             initialize(frame1, frame2);
         }
         // in the lower pyramid levels, we can use the prior knowledge and scale the
@@ -141,28 +137,18 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
         else {
             Mat resized;
             resize(flow, resized, frame1.size());
-
             flow = resized;
-
-            Mat rgb;
-            flow2rgb(flow, rgb);
-            imshow("flow", rgb);
-            waitKey();
         }
 
         for (niterations = 0; niterations < iterations; ++niterations) {
-
             #ifndef NDEBUG
                 cerr << "iteration " << (niterations + 1) << endl;
             #endif
-
             // for (int row = match_radius; row < nrows - match_radius; ++row) {
             for (int row = border; row < nrows - border ; ++row) {
-
                 #ifndef NDEBUG
                     cerr << "\r" << row;
                 #endif
-
                 for (int col = border; col < ncols - border; ++col) {
                     float cost = propagate(frame1, frame2, row, col);
                     random_search(frame1, frame2, row, col, cost);
@@ -172,19 +158,16 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
                 cerr << "\r";
             #endif
         }
-
-        Mat rgb;
-        flow2rgb(flow, rgb);
-        imshow("flow", rgb);
-        waitKey();
     }
-
-
     flow.copyTo(dest);
 }
 
 void PatchMatch::initialize(const Mat& image1, const Mat& image2)
 {
+    #ifndef NDEBUG
+        cerr << "initialize" << endl;
+    #endif
+
     Point2i offset;
     Point2i index;
     Point2i pixel;
@@ -293,8 +276,6 @@ void PatchMatch::random_search(const cv::Mat &image1, const cv::Mat &image2, con
         if (distance < 1) {
             break;
         }
-
-        // cout << col << " " <<  distance << endl;
 
         // jump randomly in the interval [-1, 1] x [-1, 1]
         Point2f offset = random_interval();

@@ -12,7 +12,7 @@ tests are run on an Ubuntu 14.04 LTS.
 
 ```bash
 # install OpenCV as python package together with python-numpy
-sudo apt-get install python-opencv
+$ sudo apt-get install python-opencv
 ```
 
 ## C++ implementations
@@ -22,7 +22,7 @@ The C++ implementation uses cmake as build system
 ```bash
 
 $ mkdir build
-$ cd build
+$ cd build/
 # You can also specify "Debug" as build type to get some more verbose
 # print statements
 $ cmake -DCMAKE_BUILD_TYPE=Release ..

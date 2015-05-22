@@ -153,6 +153,13 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
             flow = resized;
         }
 
+        Mat rgb;
+        flow2rgb(flow, rgb);
+        // if we do not convert it, be got black images
+        // in the PNG files
+        rgb.convertTo(rgb, CV_8UC3, 255.0); 
+        imwrite("flow-p" + to_string(p) + "-init.png", rgb);
+
         for (niterations = 0; niterations < iterations; ++niterations) {
             #ifndef NDEBUG
                 cerr << "iteration " << (niterations + 1) << endl;
@@ -172,13 +179,15 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
             #ifndef NDEBUG
                 cerr << "\r";
             #endif
-        }
 
-        
-        // display result
-        Mat rgb;
-        flow2rgb(flow, rgb);
-        imwrite("flow-p" + to_string(p) + ".png", rgb);
+            // display result
+            Mat rgb;
+            flow2rgb(flow, rgb);
+            // if we do not convert it, be got black images
+            // in the PNG files
+            rgb.convertTo(rgb, CV_8UC3, 255.0); 
+            imwrite("flow-p" + to_string(p) + "-i" + to_string(niterations) + ".png", rgb);
+        }
     }
     flow.copyTo(dest);
 }

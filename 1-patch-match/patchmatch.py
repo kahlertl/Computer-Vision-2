@@ -222,6 +222,7 @@ if __name__ == '__main__':
 
         print('Parameters:')
         print('  iterations:    %d' % args.iterations)
+        print('  pyramid:       %d' % args.pyramid)
         print('  match-radius:  %d' % args.match_radius)
         print('  maxoffset:     %d' % args.maxoffset)
         print('  search-radius: %d' % (args.search_radius or min(frame1.shape[:2])))
@@ -254,31 +255,39 @@ if __name__ == '__main__':
             else:
                 pm.initialize(pyramid_result)
 
-            flow = flow2rgb(pm.result)
-            reconstruction = reconstruct_from_flow(pm.result, frame2)
-            merged = merge(flow, reconstruction)
-            name = 'flow-py-%d-it-0.png' % (index + 1)        
-            cv2.imwrite(name, merged)
+            # # save result of first iteration step
+            # flow = flow2rgb(pm.result)
+            # reconstruction = reconstruct_from_flow(pm.result, frame2)
+            # merged = merge(flow, reconstruction)
+            # name = 'flow-py-%d-it-0.png' % (index + 1)        
+            # cv2.imwrite(name, merged)
 
             # do some iterations
-            for i in xrange(int(iterations)):
+            for i in xrange(iterations):
                 print('   iteration %d ...' % (i + 1))
                 pm.iterate()
 
-                # display progress
                 # we have to convert the integer offsets to floats, because
                 # optical flow could be subpixel accurate
                 flow = flow2rgb(pm.result)
-                reconstruction = reconstruct_from_flow(pm.result, frame2)
-                merged = merge(flow, reconstruction) 
-                # show(merged)
-                name = 'flow-py-%d-it-%i.png' % ((index + 1),(i + 1))
-                cv2.imwrite(name, merged)
 
+                # # save result of each iteration step
+                # reconstruction = reconstruct_from_flow(pm.result, frame2)
+                # merged = merge(flow, reconstruction) 
+                # # display progress
+                # show(merged)
+                # name = 'flow-py-%d-it-%i.png' % (index + 1, i + 1)
+                # cv2.imwrite(name, merged)
+
+            # Display result for each pyramid level
             pyramid_result = pm.result
             flow = flow2rgb(pyramid_result)
-            reconstruction = reconstruct_from_flow(pyramid_result, frame2)
-            # show(merge(flow, reconstruction), wait=True)
+            reconstruction = reconstruct_from_flow(pyramid_result, images[1])
+            merged = merge(flow, reconstruction)
+            # show(merged, wait=True)
+            # cv2.imwrite("flow-py-%d-it-%d.png" % (index + 1, iterations), merged)
 
+        show(merged, wait=True)
+        
     except KeyboardInterrupt:
         print('Stopping ...')

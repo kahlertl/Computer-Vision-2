@@ -3,6 +3,7 @@
 #include <iostream>
 #include <numeric> // numeric_limits
 #include "patchmatch.hpp"
+#include "assert.h"
 
 using namespace std;
 using namespace cv;
@@ -14,6 +15,18 @@ float ssd(const Mat& image1, const Point2i& center1, const Mat& image2, const Po
 
     for (int row = -radius; row <= radius; ++row) {
         for (int col = -radius; col <= radius; ++col) {
+            // assert(row + center1.y >= 0);
+            // assert(row + center1.y < image1.rows);
+
+            // assert(col + center1.x >= 0);
+            // assert(col + center1.x < image1.cols);
+
+            // assert(row + center2.y >= 0);
+            // assert(row + center2.y < image2.rows);
+
+            // assert(col + center2.x >= 0);
+            // assert(col + center2.x < image2.cols);
+
             const uchar gray1 = image1.at<uchar>(row + center1.y, col + center1.x);
             const uchar gray2 = image2.at<uchar>(row + center2.y, col + center2.x);
 
@@ -150,7 +163,9 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
                     cerr << "\r" << row;
                 #endif
                 for (int col = border; col < ncols - border; ++col) {
+                    // if (p == 1) cerr << "propagate" << endl;
                     float cost = propagate(frame1, frame2, row, col);
+                    // if (p == 1) cerr << "random search" << endl;
                     random_search(frame1, frame2, row, col, cost);
                 }
             }
@@ -158,6 +173,12 @@ void PatchMatch::match(const Mat& image1, const Mat& image2, Mat& dest)
                 cerr << "\r";
             #endif
         }
+
+        
+        // display result
+        Mat rgb;
+        flow2rgb(flow, rgb);
+        imwrite("flow-p" + to_string(p) + ".png", rgb);
     }
     flow.copyTo(dest);
 }
@@ -289,7 +310,7 @@ void PatchMatch::random_search(const cv::Mat &image1, const cv::Mat &image2, con
         //  - it has to be inside the max offset bound
         //  - must be inside the image
         if (abs(offset.x) <= maxoffset && abs(offset.y) <= maxoffset &&  in_borders(center)) {
-            float match = ssd(image1, Point2i(row, col), image2, center, search_radius, costs);
+            float match = ssd(image1, index, image2, center, match_radius, costs);
 
             // if better match was found, update the current costs and insert the offset
             if (match < costs) {

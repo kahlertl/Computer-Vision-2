@@ -1,0 +1,27 @@
+#!/bin/bash
+# 
+# This is the CI (continous integration) build script for the
+# Computer Vision 2 repository.
+
+# stop bash script of any non-zero exit code occurs
+set -e
+
+# create build/ directory where we create our targets (executables, libraries ...)
+mkdir build/
+cd build/
+
+# Were to find the OpenCV library. This gives the CI runner the possiblity
+# to chosse custom locations for the lib
+if [[ "$1x" == "x" ]]; then
+    OpenCV_DIR="/usr/include/opencv2"
+else
+    OpenCV_DIR=$1
+fi
+
+echo "OpenCV_DIR $OpenCV_DIR"
+
+# We use a self-compiled version of the OpenCV library
+cmake -D CMAKE_BUILD_TYPE=Debug -D OpenCV_DIR=$OpenCV_DIR ..
+
+# create all targets
+make

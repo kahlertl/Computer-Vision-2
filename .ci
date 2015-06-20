@@ -1,0 +1,16 @@
+#!/bin/bash
+# 
+# This is the CI (continous integration) build script for the
+# Computer Vision 2 repository.
+
+# stop bash script of any non-zero exit code occurs
+set -e
+
+# create build/ directory where we create our targets (executables, libraries ...)
+mkdir build/
+cd build/
+
+cmake -D CMAKE_BUILD_TYPE=Debug ..
+
+# create all targets
+make

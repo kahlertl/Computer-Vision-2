@@ -10,7 +10,18 @@ set -e
 mkdir build/
 cd build/
 
-cmake -D CMAKE_BUILD_TYPE=Debug ..
+# Were to find the OpenCV library. This gives the CI runner the possiblity
+# to chosse custom locations for the lib
+if [[ "$1x" == "x" ]]; then
+    OpenCV_DIR="/usr/include/opencv2"
+else
+    OpenCV_DIR=$1
+fi
+
+echo "OpenCV_DIR $OpenCV_DIR"
+
+# We use a self-compiled version of the OpenCV library
+cmake -D CMAKE_BUILD_TYPE=Debug -D OpenCV_DIR=$OpenCV_DIR ..
 
 # create all targets
 make

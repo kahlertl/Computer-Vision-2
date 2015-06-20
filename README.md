@@ -1,5 +1,7 @@
 # Computer Vision 2
 
+[![build status](https://square-src.de/ci/projects/7/status.png?ref=master)](https://square-src.de/ci/projects/7?ref=master)
+
 Source code for the exercises related to my Computer Vision 2 course, taken at
 the TU Dresden in summer semester 2015.
 

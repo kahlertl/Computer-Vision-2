@@ -1,4 +1,4 @@
-add_executable(grabcut grabcut.cpp)
+add_executable(grabcut app.cpp)
 
 target_link_libraries(grabcut ${OpenCV_LIBS})
 

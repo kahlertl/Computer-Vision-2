@@ -25,7 +25,7 @@ $ mkdir build
 $ cd build/
 # You can also specify "Debug" as build type to get some more verbose
 # print statements
-$ cmake -DCMAKE_BUILD_TYPE=Release ..
+$ cmake -D CMAKE_BUILD_TYPE=Release ..
 $ make patchmatch
 
 # run your binary

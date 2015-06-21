@@ -41,6 +41,7 @@
 
 #include "precomp.hpp"
 #include "gcgraph.hpp"
+#include "grabcut.hpp"
 #include <limits>
 #include <iostream>
 
@@ -517,7 +518,7 @@ static void estimateSegmentation(GCGraph<double>& graph, Mat& mask)
 
 void cv::grabCut(InputArray _img, InputOutputArray _mask, Rect rect,
                  InputOutputArray _bgdModel, InputOutputArray _fgdModel,
-                 int iterCount, int mode)
+                 int iterCount,  double tolerance, int mode)
 {
     Mat img = _img.getMat();
     Mat& mask = _mask.getMatRef();

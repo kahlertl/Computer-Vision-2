@@ -1,14 +1,15 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-
 #include <iostream>
+
+#include "grabcut.hpp"
+
 
 #ifndef NDEBUG
     #define DPRINTF(message, ...) fprintf(stderr, message, __VA_ARGS__);
 #else
     #define DPRINTF(x) {};
 #endif
-
 
 
 using namespace std;
@@ -282,7 +283,7 @@ int GCApplication::nextIter()
     cerr << "tolerance: " << tolerance << endl;
 
     if (isInitialized) {
-        grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1);
+        grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1, tolerance);
     } else {
         // if the application not initialized and the rectangular is not set up be the user
         // we do nothing
@@ -294,9 +295,9 @@ int GCApplication::nextIter()
         //
         // if the user provides brush strokes, use them as mask for the initial iteration
         if (labelsState == SET || probablyLabelsState == SET) {
-            grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1, GC_INIT_WITH_MASK);
+            grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1, tolerance, GC_INIT_WITH_MASK);
         } else {
-            grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1, GC_INIT_WITH_RECT);
+            grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1, tolerance, GC_INIT_WITH_RECT);
         }
         // after the initial iteration, the application is initialized
         isInitialized = true;

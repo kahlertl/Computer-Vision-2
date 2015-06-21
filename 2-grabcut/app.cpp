@@ -3,6 +3,14 @@
 
 #include <iostream>
 
+#ifndef NDEBUG
+    #define DPRINTF(message, ...) fprintf(stderr, message, __VA_ARGS__);
+#else
+    #define DPRINTF(x) {};
+#endif
+
+
+
 using namespace std;
 using namespace cv;
 
@@ -37,6 +45,8 @@ const Scalar GREEN     = Scalar(0, 255, 0);
 const int BGD_KEY = CV_EVENT_FLAG_CTRLKEY;
 const int FGD_KEY = CV_EVENT_FLAG_SHIFTKEY;
 
+const int MAX_TOLERANCE = 100;
+
 static void getBinMask(const Mat& comMask, Mat& binMask)
 {
     if (comMask.empty() || comMask.type() != CV_8UC1) {
@@ -58,11 +68,19 @@ public:
     static const int radius = 2;
     static const int thickness = -1;
 
+    GCApplication(double tolerance = MAX_TOLERANCE) : tolerance(tolerance) {};
     void reset();
     void setImageAndWinName(const Mat& _image, const string& _winName);
     void showImage() const;
     void mouseClick(int event, int x, int y, int flags, void* param);
     int nextIter();
+
+    /**
+     * Sets tolerance for initial GMM estimization. The app will fallback
+     * in an uninitiazed state with, but the rectangular and brush strokes
+     * are kept.
+     */
+    void setTolerance(double tolerance);
 
     inline int getIterCount() const { return iterCount; }
 
@@ -87,6 +105,8 @@ private:
     // vectors of user-marked pixels for fore- and background
     vector<Point> foregroundPixels, backgroundPixels, probablyForegroundPixels, probablyBackgroundPixels;
     int iterCount;
+
+    double tolerance;
 };
 
 void GCApplication::reset()
@@ -259,6 +279,8 @@ void GCApplication::mouseClick(int event, int x, int y, int flags, void*)
 
 int GCApplication::nextIter()
 {
+    cerr << "tolerance: " << tolerance << endl;
+
     if (isInitialized) {
         grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1);
     } else {
@@ -290,6 +312,15 @@ int GCApplication::nextIter()
     return iterCount;
 }
 
+
+void GCApplication::setTolerance(double _tolerance)
+{
+    tolerance = _tolerance;
+    isInitialized = false;
+    iterCount = 0;
+
+    this->showImage();
+}
 GCApplication gcapp;
 
 static void on_mouse(int event, int x, int y, int flags, void* param)
@@ -297,8 +328,15 @@ static void on_mouse(int event, int x, int y, int flags, void* param)
     gcapp.mouseClick(event, x, y, flags, param);
 }
 
+static void on_trackbar(int value, void*)
+{
+    DPRINTF("on_trackbar: %d\n", value);
+    gcapp.setTolerance((double) value / (double) MAX_TOLERANCE);
+}
+
 int main(int argc, char** argv)
 {
+
     if (argc != 2) {
         help();
         return 1;
@@ -316,9 +354,11 @@ int main(int argc, char** argv)
 
     help();
 
+    int toleranceSlider = 50;
     const string winName = "image";
     namedWindow(winName, WINDOW_AUTOSIZE);
     setMouseCallback(winName, on_mouse, 0);
+    createTrackbar("tolerance", winName, &toleranceSlider, MAX_TOLERANCE, on_trackbar);
 
     gcapp.setImageAndWinName(image, winName);
     gcapp.showImage();

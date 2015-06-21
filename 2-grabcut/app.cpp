@@ -72,7 +72,7 @@ public:
     void reset();
     void setImageAndWinName(const Mat& _image, const string& _winName);
     void showImage() const;
-    void mouseClick(int event, int x, int y, int flags, void* param);
+    void mouseClick(int event, int x, int y, int flags);
     int nextIter();
 
     /**
@@ -213,7 +213,7 @@ void GCApplication::setLabelsInMask(int flags, Point p, bool isPr)
     }
 }
 
-void GCApplication::mouseClick(int event, int x, int y, int flags, void*)
+void GCApplication::mouseClick(int event, int x, int y, int flags)
 {
     // TODO add bad args check
     switch (event) {
@@ -321,21 +321,21 @@ void GCApplication::setTolerance(double _tolerance)
 
     this->showImage();
 }
-GCApplication gcapp;
 
-static void on_mouse(int event, int x, int y, int flags, void* param)
+static void on_mouse(int event, int x, int y, int flags, void* gcapp)
 {
-    gcapp.mouseClick(event, x, y, flags, param);
+    ((GCApplication*) gcapp)->mouseClick(event, x, y, flags);
 }
 
-static void on_trackbar(int value, void*)
+static void on_trackbar(int value, void* gcapp)
 {
     DPRINTF("on_trackbar: %d\n", value);
-    gcapp.setTolerance((double) value / (double) MAX_TOLERANCE);
+    ((GCApplication*) gcapp)->setTolerance((double) value / (double) MAX_TOLERANCE);
 }
 
 int main(int argc, char** argv)
 {
+    GCApplication gcapp;
 
     if (argc != 2) {
         help();
@@ -357,8 +357,8 @@ int main(int argc, char** argv)
     int toleranceSlider = 50;
     const string winName = "image";
     namedWindow(winName, WINDOW_AUTOSIZE);
-    setMouseCallback(winName, on_mouse, 0);
-    createTrackbar("tolerance", winName, &toleranceSlider, MAX_TOLERANCE, on_trackbar);
+    setMouseCallback(winName, on_mouse, &gcapp);
+    createTrackbar("tolerance", winName, &toleranceSlider, MAX_TOLERANCE, on_trackbar, &gcapp);
 
     gcapp.setImageAndWinName(image, winName);
     gcapp.showImage();

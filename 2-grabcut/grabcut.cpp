@@ -543,7 +543,7 @@ static void constructGCGraph(const Mat &img, const Mat &mask, const GMM &bgdGMM,
             double fromSource, toSink;
             if (mask.at<uchar>(p) == GC_PR_BGD || mask.at<uchar>(p) == GC_PR_FGD) {
                 fromSource = -log(bgdGMM(color));
-                toSink = -log(fgdGMM(color));
+                toSink     = -log(fgdGMM(color));
             } else if (mask.at<uchar>(p) == GC_BGD) {
                 fromSource = 0;
                 toSink = lambda;

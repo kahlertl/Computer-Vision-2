@@ -101,9 +101,9 @@ class GCApplication
     static const int radius = 2;
     static const int thickness = -1;
 
-    GCApplication(double tolerance = MAX_TOLERANCE, double lambda = 1, double contrast = 1) :
+    GCApplication(double tolerance = MAX_TOLERANCE, double distance = 1, double contrast = 1) :
         tolerance(tolerance),
-        lambda(lambda),
+        distance(distance),
         contrast(contrast),
         image(nullptr),
         winName(nullptr)
@@ -124,9 +124,9 @@ class GCApplication
      * in an uninitiazed state with, but the rectangular and brush strokes
      * are kept.
      */
-    inline void setTolerance(double _tolerance) { tolerance = _tolerance; resetIter(iterCount  ); }
-    inline void setContrast(double _contrast)   { contrast = _contrast;   resetIter(iterCount  ); }
-    inline void setLambda(double _lambda)       { lambda   = _lambda;     resetIter(iterCount  ); }
+    inline void setTolerance(double _tolerance) { tolerance = _tolerance; resetIter(); }
+    inline void setContrast(double _contrast)   { contrast = _contrast;   resetIter(); }
+    inline void setDistance(double _distance)   { distance   = _distance; resetIter(); }
 
     inline int getIterCount() const { return iterCount; }
 
@@ -135,7 +135,7 @@ class GCApplication
 
     void setLabelsInMask(int flags, Point p, bool isPr);
 
-    void resetIter(int n);
+    void resetIter();
 
     const string *winName;
     const Mat *image;
@@ -156,7 +156,7 @@ class GCApplication
     int iterCount;
 
     double tolerance;
-    double lambda;
+    double distance;
     double contrast;
 };
 
@@ -363,15 +363,15 @@ int GCApplication::nextIter()
     return iterCount;
 }
 
-void GCApplication::resetIter(int n)
+void GCApplication::resetIter()
 {
     isInitialized = false;
-    iterCount   = 0;
+    iterCount = 0;
     showImage();
 }
 
 static int toleranceSlider = 50;
-static int lambdaSlider   = 100;
+static int distanceSlider   = 100;
 static int contrastSlider   = 100;
 
 static GCApplication gcapp;
@@ -431,8 +431,8 @@ int main(int argc, const char **argv)
     namedWindow(winName, WINDOW_AUTOSIZE);
     setMouseCallback(winName, on_mouse, 0);
     createTrackbar("tolerance", winName, &toleranceSlider, MAX_TOLERANCE, on_trackbar, 0);
-    createTrackbar("lambda 1", winName, &lambdaSlider, 1000, on_trackbar, 0);
-    createTrackbar("lambda 2", winName, &contrastSlider, 1000, on_trackbar, 0);
+    createTrackbar("distance",  winName, &distanceSlider,           1000, on_trackbar, 0);
+    createTrackbar("constrast", winName, &contrastSlider,           1000, on_trackbar, 0);
 
     gcapp.setImageAndWinName(image, winName); // initialize app with
     on_trackbar(toleranceSlider, 0);          // set initial tolerance value

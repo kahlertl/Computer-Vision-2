@@ -147,6 +147,7 @@ void GCGraph<TWeight>::addTermWeights(int i, TWeight sourceW, TWeight sinkW)
     } else {
         sinkW -= dw;
     }
+    // add the min(sourceW, sinkW) to flow
     flow += (sourceW < sinkW) ? sourceW : sinkW;
     vtcs[i].weight = sourceW - sinkW;
 }

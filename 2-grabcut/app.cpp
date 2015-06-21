@@ -25,7 +25,7 @@ static void usage()
             "  options:\n"
             "    -h, --help            Show this help message\n"
             "    -c, --connectivity    Neighborhood system that should be used.\n"
-            "                          Default: 4\n\n"; 
+            "                          Default: 8\n\n"; 
 }
 
 static bool parsePositionalImage(Mat& image, const int channels, const string& name, int argc, char const *argv[])
@@ -76,6 +76,8 @@ const int BGD_KEY = CV_EVENT_FLAG_CTRLKEY;
 const int FGD_KEY = CV_EVENT_FLAG_SHIFTKEY;
 
 const int MAX_TOLERANCE = 100;
+const int MAX_DISTANCE  = 1000;
+const int MAX_CONTRAST  = 1000;
 
 static void getBinMask(const Mat &comMask, Mat &binMask)
 {
@@ -101,10 +103,12 @@ class GCApplication
     static const int radius = 2;
     static const int thickness = -1;
 
-    GCApplication(double tolerance = MAX_TOLERANCE, double distance = 1, double contrast = 1) :
+    GCApplication(double tolerance = MAX_TOLERANCE, double distance = 1, double contrast = 1,
+                  int connectivity = GC_N8) :
         tolerance(tolerance),
         distance(distance),
         contrast(contrast),
+        connectivity(connectivity),
         image(nullptr),
         winName(nullptr)
     {}
@@ -125,8 +129,8 @@ class GCApplication
      * are kept.
      */
     inline void setTolerance(double _tolerance) { tolerance = _tolerance; resetIter(); }
-    inline void setContrast(double _contrast)   { contrast = _contrast;   resetIter(); }
-    inline void setDistance(double _distance)   { distance   = _distance; resetIter(); }
+    inline void setContrast(double _contrast)   { contrast  = _contrast;  resetIter(); }
+    inline void setDistance(double _distance)   { distance  = _distance;  resetIter(); }
 
     inline int getIterCount() const { return iterCount; }
 
@@ -158,6 +162,7 @@ class GCApplication
     double tolerance;
     double distance;
     double contrast;
+    int connectivity;
 };
 
 void GCApplication::reset()
@@ -333,7 +338,7 @@ void GCApplication::mouseClick(int event, int x, int y, int flags)
 int GCApplication::nextIter()
 {
     if (isInitialized) {
-        grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1, tolerance);
+        grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1, tolerance, connectivity);
     } else {
         // if the application not initialized and the rectangular is not set up be the user
         // we do nothing
@@ -345,9 +350,9 @@ int GCApplication::nextIter()
         //
         // if the user provides brush strokes, use them as mask for the initial iteration
         if (labelsState == SET || probablyLabelsState == SET) {
-            grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1, tolerance, GC_INIT_WITH_MASK);
+            grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1, tolerance, connectivity, GC_INIT_WITH_MASK);
         } else {
-            grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1, tolerance, GC_INIT_WITH_RECT);
+            grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1, tolerance, connectivity, GC_INIT_WITH_RECT);
         }
         // after the initial iteration, the application is initialized
         isInitialized = true;
@@ -370,26 +375,38 @@ void GCApplication::resetIter()
     showImage();
 }
 
-static int toleranceSlider = 50;
-static int distanceSlider   = 100;
-static int contrastSlider   = 100;
-
-static GCApplication gcapp;
-
-static void on_mouse(int event, int x, int y, int flags, void*)
+static void onMouse(int event, int x, int y, int flags, void* gcapp)
 {
-    gcapp.mouseClick(event, x, y, flags);
+    ((GCApplication*) gcapp)->mouseClick(event, x, y, flags);
 }
 
-static void on_trackbar(int, void*)
+static inline double trackbarToTolerance(int value) { return (double) value / (double) MAX_DISTANCE; }
+static inline double trackbarToContrast(int value)  { return (double)  value / (double) MAX_CONTRAST; }
+static inline double trackbarToDistance(int value)  { return (double)  value / (double) MAX_DISTANCE; }
+
+static void onToleranceTrackbar(int value, void* gcapp)
 {
-    gcapp.setTolerance((double) toleranceSlider / (double) MAX_TOLERANCE);
+    ((GCApplication*) gcapp)->setTolerance(trackbarToTolerance(value));
 }
+
+static void onContrastTrackbar(int value, void* gcapp)
+{
+    ((GCApplication*) gcapp)->setContrast((value));
+}
+
+static void onDistanceTrackbar(int value, void* gcapp)
+{
+    ((GCApplication*) gcapp)->setDistance((value));
+}
+
 
 int main(int argc, const char **argv)
 {
     Mat image;
-    int connectivity = 4;
+    int connectivity = GC_N8;
+    int toleranceSlider = 50;
+    int distanceSlider  = 100;
+    int contrastSlider  = 100;
 
     // parse command line options
     while (true) {
@@ -406,13 +423,18 @@ int main(int argc, const char **argv)
                 usage();
                 return 0;
 
-            case 's':
-                connectivity = stoi(string(optarg));
-                if (connectivity != 4 && connectivity != 8) {
+            case 's': {
+                int c = stoi(string(optarg));
+                if (c == 4) {
+                    connectivity = GC_N4;
+                } else if (c == 8) {
+                    connectivity = GC_N8;
+                } else {
                     cerr << argv[0] << ": Invalid connectivity " << optarg << ". Only 4 and 8 are supported" << endl;
                     return 1;
                 }
                 break;
+            }
 
             case '?': // missing option
                 return 1;
@@ -427,15 +449,23 @@ int main(int argc, const char **argv)
 
     help();
 
+    GCApplication gcapp(trackbarToTolerance(toleranceSlider),
+                        trackbarToDistance(distanceSlider),
+                        trackbarToContrast(contrastSlider),
+                        connectivity);
+
+
     const string winName = "image";
     namedWindow(winName, WINDOW_AUTOSIZE);
-    setMouseCallback(winName, on_mouse, 0);
-    createTrackbar("tolerance", winName, &toleranceSlider, MAX_TOLERANCE, on_trackbar, 0);
-    createTrackbar("distance",  winName, &distanceSlider,           1000, on_trackbar, 0);
-    createTrackbar("constrast", winName, &contrastSlider,           1000, on_trackbar, 0);
 
-    gcapp.setImageAndWinName(image, winName); // initialize app with
-    on_trackbar(toleranceSlider, 0);          // set initial tolerance value
+    setMouseCallback(winName, onMouse, &gcapp);
+
+    createTrackbar("tolerance", winName, &toleranceSlider, MAX_TOLERANCE, onToleranceTrackbar, &gcapp);
+    createTrackbar("distance",  winName, &distanceSlider,  MAX_DISTANCE,  onDistanceTrackbar,  &gcapp);
+    createTrackbar("constrast", winName, &contrastSlider,  MAX_CONTRAST,  onContrastTrackbar,  &gcapp);
+
+    gcapp.setImageAndWinName(image, winName);
+    gcapp.showImage();
 
     while (true) {
         int c = waitKey(0);

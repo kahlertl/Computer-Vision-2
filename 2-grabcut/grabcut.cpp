@@ -326,37 +326,49 @@ static double calcBeta(const Mat &img)
 
 /**
  * Calculate weights of noterminal vertices of graph.
+ * N means the connectivity of the graph.
+ * 
  * beta and gamma - parameters of GrabCut algorithm.
  */
-static void calcNWeights(const Mat &img, Mat &leftW, Mat &upleftW, Mat &upW, Mat &uprightW, double beta, double gamma)
+static void calcNWeights(const Mat &img, Mat &leftW, Mat &upleftW, Mat &upW, Mat &uprightW,
+                         double beta, double gamma, int connectivity)
 {
     const double gammaDivSqrt2 = gamma / std::sqrt(2.0f);
+
+    // initialize all matrices
     leftW.create(img.rows, img.cols, CV_64FC1);
-    upleftW.create(img.rows, img.cols, CV_64FC1);
     upW.create(img.rows, img.cols, CV_64FC1);
-    uprightW.create(img.rows, img.cols, CV_64FC1);
+    if (connectivity == GC_N8) {
+        upleftW.create(img.rows, img.cols, CV_64FC1);
+        uprightW.create(img.rows, img.cols, CV_64FC1);
+    }
+
     for (int y = 0; y < img.rows; y++) {
         for (int x = 0; x < img.cols; x++) {
             Vec3d color = img.at<Vec3b>(y, x);
-            if (x - 1 >= 0) { // left
+            // left
+            if (x - 1 >= 0) {
                 Vec3d diff = color - (Vec3d) img.at<Vec3b>(y, x - 1);
                 leftW.at<double>(y, x) = gamma * exp(-beta * diff.dot(diff));
             } else {
                 leftW.at<double>(y, x) = 0;
             }
-            if (x - 1 >= 0 && y - 1 >= 0) { // upleft
+            // upleft
+            if (connectivity == GC_N8 && x - 1 >= 0 && y - 1 >= 0) {
                 Vec3d diff = color - (Vec3d) img.at<Vec3b>(y - 1, x - 1);
                 upleftW.at<double>(y, x) = gammaDivSqrt2 * exp(-beta * diff.dot(diff));
             } else {
                 upleftW.at<double>(y, x) = 0;
             }
-            if (y - 1 >= 0) { // up
+            // up
+            if (y - 1 >= 0) {
                 Vec3d diff = color - (Vec3d) img.at<Vec3b>(y - 1, x);
                 upW.at<double>(y, x) = gamma * exp(-beta * diff.dot(diff));
             } else {
                 upW.at<double>(y, x) = 0;
             }
-            if (x + 1 < img.cols && y - 1 >= 0) { // upright
+            // upright
+            if (connectivity == GC_N8 && x + 1 < img.cols && y - 1 >= 0) {
                 Vec3d diff = color - (Vec3d) img.at<Vec3b>(y - 1, x + 1);
                 uprightW.at<double>(y, x) = gammaDivSqrt2 * exp(-beta * diff.dot(diff));
             } else {
@@ -524,8 +536,25 @@ static void learnGMMs(const Mat &img, const Mat &mask, const Mat &compIdxs, GMM 
 
 /**
  * Construct GCGraph
+ * 
+ * A graph is built from the GMM. Nodes in the graphs are pixels.
+ * Two additional nodes are added, the Source node and the Sink node. Every foreground
+ * pixel is connected to Source node and every background pixel is connected to Sink node.
+ * 
+ * The weights of edges connecting pixels to source/sink node node are defined by the
+ * probability of a pixel being foreground/background.
+ * 
+ * The weights between the pixels are defined by the edge information or pixel similarity.
+ * If there is a large difference in pixel color, the edge between them will get a low weight.
+ * 
+ * The graph is 8-connected, which means that every pixel/node is connected to each of
+ * it neighbors.
+ * 
+ * @param lambda    weight of the edges connecting foreground/background nodes
+ *                  to the source/sink
  */
-static void constructGCGraph(const Mat &img, const Mat &mask, const GMM &bgdGMM, const GMM &fgdGMM, double lambda,
+static void constructGCGraph(const Mat &img, const Mat &mask, const GMM &bgdGMM, const GMM &fgdGMM,
+                             double lambda, int connectivity,
                              const Mat &leftW, const Mat &upleftW, const Mat &upW, const Mat &uprightW,
                              GCGraph<double> &graph)
 {
@@ -539,26 +568,38 @@ static void constructGCGraph(const Mat &img, const Mat &mask, const GMM &bgdGMM,
             int vtxIdx = graph.addVtx();
             Vec3b color = img.at<Vec3b>(p);
 
+            // 
+            // Unary / data term
+            // 
             // set t-weights
             double fromSource, toSink;
+            // we do not know exactly if the pixel is fore- or background, therefore
+            // it is not connected to either the source or the sink 
             if (mask.at<uchar>(p) == GC_PR_BGD || mask.at<uchar>(p) == GC_PR_FGD) {
                 fromSource = -log(bgdGMM(color));
                 toSink     = -log(fgdGMM(color));
-            } else if (mask.at<uchar>(p) == GC_BGD) {
+            }
+            // background pixels are all connected to the sink
+            else if (mask.at<uchar>(p) == GC_BGD) {
                 fromSource = 0;
                 toSink = lambda;
-            } else { // GC_FGD
+            }
+            // foreground pixels are all connected to the source
+            else {
                 fromSource = lambda;
                 toSink = 0;
             }
             graph.addTermWeights(vtxIdx, fromSource, toSink);
 
+            // 
+            // Pairwise / binary / smoothing term
+            // 
             // set n-weights
             if (p.x > 0) {
                 double w = leftW.at<double>(p);
                 graph.addEdges(vtxIdx, vtxIdx - 1, w, w);
             }
-            if (p.x > 0 && p.y > 0) {
+            if (connectivity == GC_N8 && p.x > 0 && p.y > 0) {
                 double w = upleftW.at<double>(p);
                 graph.addEdges(vtxIdx, vtxIdx - img.cols - 1, w, w);
             }
@@ -566,7 +607,7 @@ static void constructGCGraph(const Mat &img, const Mat &mask, const GMM &bgdGMM,
                 double w = upW.at<double>(p);
                 graph.addEdges(vtxIdx, vtxIdx - img.cols, w, w);
             }
-            if (p.x < img.cols - 1 && p.y > 0) {
+            if (connectivity == GC_N8 && p.x < img.cols - 1 && p.y > 0) {
                 double w = uprightW.at<double>(p);
                 graph.addEdges(vtxIdx, vtxIdx - img.cols + 1, w, w);
             }
@@ -596,7 +637,7 @@ static void estimateSegmentation(GCGraph<double> &graph, Mat &mask)
 
 void cv::grabCut(InputArray _img, InputOutputArray _mask, Rect rect,
                  InputOutputArray _bgdModel, InputOutputArray _fgdModel,
-                 int iterCount, double tolerance, int mode)
+                 int iterCount, double tolerance, int connectivity, int mode)
 {
     Mat img = _img.getMat();
     Mat &mask = _mask.getMatRef();
@@ -636,13 +677,14 @@ void cv::grabCut(InputArray _img, InputOutputArray _mask, Rect rect,
     const double beta = calcBeta(img);
 
     Mat leftW, upleftW, upW, uprightW;
-    calcNWeights(img, leftW, upleftW, upW, uprightW, beta, gamma);
+    calcNWeights(img, leftW, upleftW, upW, uprightW, beta, gamma, connectivity);
 
     for (int i = 0; i < iterCount; i++) {
         GCGraph<double> graph;
         assignGMMsComponents(img, mask, bgdGMM, fgdGMM, compIdxs);
         learnGMMs(img, mask, compIdxs, bgdGMM, fgdGMM);
-        constructGCGraph(img, mask, bgdGMM, fgdGMM, lambda, leftW, upleftW, upW, uprightW, graph);
+        constructGCGraph(img, mask, bgdGMM, fgdGMM, lambda, connectivity,
+                         leftW, upleftW, upW, uprightW, graph);
         estimateSegmentation(graph, mask);
     }
 }

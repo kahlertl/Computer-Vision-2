@@ -65,7 +65,7 @@ class GCApplication
     static const int radius = 2;
     static const int thickness = -1;
 
-    GCApplication(double tolerance = MAX_TOLERANCE) : tolerance(tolerance) { };
+    GCApplication(double tolerance = MAX_TOLERANCE) : tolerance(tolerance), image(nullptr), winName(nullptr) {}
 
     void reset();
 
@@ -143,7 +143,7 @@ void GCApplication::setImageAndWinName(const Mat &_image, const string &_winName
 
 void GCApplication::showImage() const
 {
-    if (image->empty() || winName->empty()) {
+    if (image == nullptr || winName == nullptr || image->empty() || winName->empty()) {
         return;
     }
 
@@ -284,6 +284,8 @@ void GCApplication::mouseClick(int event, int x, int y, int flags)
 
 int GCApplication::nextIter()
 {
+    cerr << "tolerance: " << tolerance << endl;
+
     if (isInitialized) {
         grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1, tolerance);
     } else {
@@ -318,11 +320,11 @@ int GCApplication::nextIter()
 
 void GCApplication::setTolerance(double _tolerance)
 {
-    tolerance = _tolerance;
+    tolerance     = _tolerance;
     isInitialized = false;
-    iterCount = 0;
+    iterCount     = 0;
 
-    this->showImage();
+    showImage();
 }
 
 static void on_mouse(int event, int x, int y, int flags, void *gcapp)

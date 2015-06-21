@@ -5,50 +5,43 @@
 #include "grabcut.hpp"
 
 
-#ifndef NDEBUG
-    #define DPRINTF(message, ...) fprintf(stderr, message, __VA_ARGS__);
-#else
-    #define DPRINTF(x) {};
-#endif
-
-
 using namespace std;
 using namespace cv;
 
 static void help()
 {
     cout << "\nThis program demonstrates GrabCut segmentation -- select an object in a region\n"
-         "and then grabcut will attempt to segment it out.\n"
-         "Call:\n"
-         "./grabcut <image_name>\n"
-         "\nSelect a rectangular area around the object you want to segment\n" <<
-         "\nHot keys: \n"
-         "\tESC - quit the program\n"
-         "\tr - restore the original image\n"
-         "\tn - next iteration\n"
-         "\n"
-         "\tleft mouse button - set rectangle\n"
-         "\n"
-         "\tCTRL+left mouse button - set GC_BGD pixels\n"
-         "\tSHIFT+left mouse button - set CG_FGD pixels\n"
-         "\n"
-         "\tCTRL+right mouse button - set GC_PR_BGD pixels\n"
-         "\tSHIFT+right mouse button - set CG_PR_FGD pixels\n" << endl;
+        "and then grabcut will attempt to segment it out.\n"
+        "Call:\n"
+        "./grabcut <image_name>\n"
+        "\nSelect a rectangular area around the object you want to segment\n" <<
+    "\nHot keys: \n"
+        "\tESC - quit the program\n"
+        "\tr - restore the original image\n"
+        "\tn - next iteration\n"
+        "\n"
+        "\tleft mouse button - set rectangle\n"
+        "\n"
+        "\tCTRL+left mouse button - set GC_BGD pixels\n"
+        "\tSHIFT+left mouse button - set CG_FGD pixels\n"
+        "\n"
+        "\tCTRL+right mouse button - set GC_PR_BGD pixels\n"
+        "\tSHIFT+right mouse button - set CG_PR_FGD pixels\n" << endl;
 }
 
 // color definitions
-const Scalar RED       = Scalar(0, 0, 255);
-const Scalar PINK      = Scalar(230, 130, 255);
-const Scalar BLUE      = Scalar(255, 0, 0);
+const Scalar RED = Scalar(0, 0, 255);
+const Scalar PINK = Scalar(230, 130, 255);
+const Scalar BLUE = Scalar(255, 0, 0);
 const Scalar LIGHTBLUE = Scalar(255, 255, 160);
-const Scalar GREEN     = Scalar(0, 255, 0);
+const Scalar GREEN = Scalar(0, 255, 0);
 
 const int BGD_KEY = CV_EVENT_FLAG_CTRLKEY;
 const int FGD_KEY = CV_EVENT_FLAG_SHIFTKEY;
 
 const int MAX_TOLERANCE = 100;
 
-static void getBinMask(const Mat& comMask, Mat& binMask)
+static void getBinMask(const Mat &comMask, Mat &binMask)
 {
     if (comMask.empty() || comMask.type() != CV_8UC1) {
         CV_Error(CV_StsBadArg, "comMask is empty or has incorrect type (not CV_8UC1)");
@@ -61,19 +54,27 @@ static void getBinMask(const Mat& comMask, Mat& binMask)
 
 class GCApplication
 {
-public:
+  public:
     // state flags
-    enum { NOT_SET = 0, IN_PROCESS = 1, SET = 2 };
+    enum
+    {
+        NOT_SET = 0, IN_PROCESS = 1, SET = 2
+    };
 
     // parameters for brush stroke painting
     static const int radius = 2;
     static const int thickness = -1;
 
-    GCApplication(double tolerance = MAX_TOLERANCE) : tolerance(tolerance) {};
+    GCApplication(double tolerance = MAX_TOLERANCE) : tolerance(tolerance) { };
+
     void reset();
-    void setImageAndWinName(const Mat& _image, const string& _winName);
+
+    void setImageAndWinName(const Mat &_image, const string &_winName);
+
     void showImage() const;
+
     void mouseClick(int event, int x, int y, int flags);
+
     int nextIter();
 
     /**
@@ -85,12 +86,13 @@ public:
 
     inline int getIterCount() const { return iterCount; }
 
-private:
+  private:
     void setRectInMask();
+
     void setLabelsInMask(int flags, Point p, bool isPr);
 
-    const string* winName;
-    const Mat* image;
+    const string *winName;
+    const Mat *image;
     Mat mask;
 
     // temporary arrays fir the back- and foreground model. They will be used internally by GrabCut
@@ -128,7 +130,7 @@ void GCApplication::reset()
     iterCount = 0;
 }
 
-void GCApplication::setImageAndWinName(const Mat& _image, const string& _winName)
+void GCApplication::setImageAndWinName(const Mat &_image, const string &_winName)
 {
     if (_image.empty() || _winName.empty()) {
         return;
@@ -220,7 +222,7 @@ void GCApplication::mouseClick(int event, int x, int y, int flags)
     switch (event) {
         case CV_EVENT_LBUTTONDOWN: { // set rect or GC_BGD(GC_FGD) labels
             bool isb = (flags & BGD_KEY) != 0,
-                 isf = (flags & FGD_KEY) != 0;
+                isf = (flags & FGD_KEY) != 0;
 
             if (rectState == NOT_SET && !isb && !isf) {
                 rectState = IN_PROCESS;
@@ -230,21 +232,22 @@ void GCApplication::mouseClick(int event, int x, int y, int flags)
                 labelsState = IN_PROCESS;
             }
         }
-        break;
+            break;
         case CV_EVENT_RBUTTONDOWN: { // set GC_PR_BGD(GC_PR_FGD) labels
             bool isb = (flags & BGD_KEY) != 0,
-                 isf = (flags & FGD_KEY) != 0;
+                isf = (flags & FGD_KEY) != 0;
             if ((isb || isf) && rectState == SET) {
                 probablyLabelsState = IN_PROCESS;
             }
         }
-        break;
+            break;
         case CV_EVENT_LBUTTONUP:
             if (rectState == IN_PROCESS) {
                 rect = Rect(Point(rect.x, rect.y), Point(x, y));
                 rectState = SET;
                 setRectInMask();
-                assert(backgroundPixels.empty() && foregroundPixels.empty() && probablyBackgroundPixels.empty() && probablyForegroundPixels.empty());
+                assert(backgroundPixels.empty() && foregroundPixels.empty() && probablyBackgroundPixels.empty() &&
+                       probablyForegroundPixels.empty());
                 showImage();
             }
             if (labelsState == IN_PROCESS) {
@@ -263,7 +266,8 @@ void GCApplication::mouseClick(int event, int x, int y, int flags)
         case CV_EVENT_MOUSEMOVE:
             if (rectState == IN_PROCESS) {
                 rect = Rect(Point(rect.x, rect.y), Point(x, y));
-                assert(backgroundPixels.empty() && foregroundPixels.empty() && probablyBackgroundPixels.empty() && probablyForegroundPixels.empty());
+                assert(backgroundPixels.empty() && foregroundPixels.empty() && probablyBackgroundPixels.empty() &&
+                       probablyForegroundPixels.empty());
                 showImage();
             } else if (labelsState == IN_PROCESS) {
                 setLabelsInMask(flags, Point(x, y), false);
@@ -323,18 +327,17 @@ void GCApplication::setTolerance(double _tolerance)
     this->showImage();
 }
 
-static void on_mouse(int event, int x, int y, int flags, void* gcapp)
+static void on_mouse(int event, int x, int y, int flags, void *gcapp)
 {
-    ((GCApplication*) gcapp)->mouseClick(event, x, y, flags);
+    ((GCApplication *) gcapp)->mouseClick(event, x, y, flags);
 }
 
-static void on_trackbar(int value, void* gcapp)
+static void on_trackbar(int value, void *gcapp)
 {
-    DPRINTF("on_trackbar: %d\n", value);
-    ((GCApplication*) gcapp)->setTolerance((double) value / (double) MAX_TOLERANCE);
+    ((GCApplication *) gcapp)->setTolerance((double) value / (double) MAX_TOLERANCE);
 }
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     GCApplication gcapp;
 
@@ -361,7 +364,8 @@ int main(int argc, char** argv)
     setMouseCallback(winName, on_mouse, &gcapp);
     createTrackbar("tolerance", winName, &toleranceSlider, MAX_TOLERANCE, on_trackbar, &gcapp);
 
-    gcapp.setImageAndWinName(image, winName);
+    on_trackbar(toleranceSlider, &gcapp);     // set initial tolerance value
+    gcapp.setImageAndWinName(image, winName); // initialize app with
     gcapp.showImage();
 
     while (true) {
@@ -375,7 +379,10 @@ int main(int argc, char** argv)
                 gcapp.reset();
                 gcapp.showImage();
                 break;
-            case 'n':
+            case 'n': {
+                // we need the curly brackets for scope reasons. Otherwise we
+                // the compiler cries, because we could skip the initialziation
+                // of the iterCounter variable
                 int iterCount = gcapp.getIterCount();
                 cout << "<" << iterCount << "... ";
                 int newIterCount = gcapp.nextIter();
@@ -386,10 +393,13 @@ int main(int argc, char** argv)
                     cout << "rect must be determined>" << endl;
                 }
                 break;
+            }
+            default:
+                break;
         }
     }
 
-exit_main:
+    exit_main:
     destroyWindow(winName);
     return 0;
 }

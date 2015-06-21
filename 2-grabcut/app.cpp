@@ -200,16 +200,20 @@ void GCApplication::showImage() const
         return;
     }
 
-    Mat canvas;
-    Mat binMask;
-
-    if (!isInitialized) {
-        image->copyTo(canvas);
-    } else {
+    if (isInitialized) {
+        Mat binMask;
         // create initial binary mask
         getBinMask(mask, binMask);
-        image->copyTo(canvas, binMask);
+        
+        Mat segmentation;
+        image->copyTo(segmentation, binMask);
+        
+        namedWindow("segmentation", WINDOW_AUTOSIZE);
+        imshow("segmentation", segmentation);
     }
+
+    Mat canvas;
+    image->copyTo(canvas);
 
     // draw each user-defined brush stroke
     for (int i = 0; i < backgroundPixels.size(); ++i) {
@@ -224,7 +228,6 @@ void GCApplication::showImage() const
     for (int i = 0; i < probablyForegroundPixels.size(); ++i) {
         circle(canvas, probablyForegroundPixels[i], radius, PINK, thickness);
     }
-
 
     if (rectState == IN_PROCESS || rectState == SET) {
         rectangle(canvas, Point(rect.x, rect.y), Point(rect.x + rect.width, rect.y + rect.height), GREEN, 2);
@@ -360,10 +363,10 @@ int GCApplication::nextIter()
     iterCount++;
 
     // delete all brush strokes
-    backgroundPixels.clear();
-    foregroundPixels.clear();
-    probablyBackgroundPixels.clear();
-    probablyForegroundPixels.clear();
+    // backgroundPixels.clear();
+    // foregroundPixels.clear();
+    // probablyBackgroundPixels.clear();
+    // probablyForegroundPixels.clear();
 
     return iterCount;
 }

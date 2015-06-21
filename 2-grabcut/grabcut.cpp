@@ -45,6 +45,10 @@
 #include <iostream>
 #include <limits>
 
+#ifndef NDEBUG
+    #include <opencv2/highgui/highgui.hpp>
+#endif
+
 using namespace cv;
 
 /**
@@ -403,31 +407,6 @@ static void initMaskWithRect(Mat &mask, Size imgSize, Rect rect)
 }
 
 /**
- * Searches the minimum and maximum probability of the given samples in the GMM
- * distribution. Then normalizes the tolerance given in the interval [0,1] to the interval
- * build from the found extrema.
- *
- *  tolerance in [0,1] ~ normalized in [min_probability, max_probability]
- *
- * @return (max_probability - min_probability) * tolerance
- *
- */
-static double normalizeTolerance(const std::vector<Vec3f> samples, const GMM& gmm, double tolerance)
-{
-    double max = 0, min = std::numeric_limits<double>::infinity();
-
-    // search minimum and maximum probability for all foreground samples in the background
-    // distribution
-    for (int i = 0; i < samples.size(); i++) {
-        double probability = gmm(samples[i]);
-        // update extrema
-        if (probability > max) { max = probability; }
-        if (probability < min) { min = probability; }
-    }
-    return (max - min) * tolerance;
-}
-
-/**
  * Initialize GMM background and foreground models using kmeans algorithm.
  */
 static void initGMMs(const Mat &img, const Mat &mask, double tolerance,
@@ -438,13 +417,16 @@ static void initGMMs(const Mat &img, const Mat &mask, double tolerance,
 
     Mat bgdLabels, fgdLabels;
     vector<Vec3f> bgdSamples, fgdSamples;
+    vector<Point> bgdPixels, fgdPixels;
     Point p;
     for (p.y = 0; p.y < img.rows; p.y++) {
         for (p.x = 0; p.x < img.cols; p.x++) {
             if (mask.at<uchar>(p) == GC_BGD || mask.at<uchar>(p) == GC_PR_BGD) {
                 bgdSamples.push_back((Vec3f) img.at<Vec3b>(p));
+                bgdPixels.push_back(p);
             } else { // GC_FGD | GC_PR_FGD
                 fgdSamples.push_back((Vec3f) img.at<Vec3b>(p));
+                fgdPixels.push_back(p);
             }
         }
     }
@@ -463,17 +445,37 @@ static void initGMMs(const Mat &img, const Mat &mask, double tolerance,
     }
     bgdGMM.endLearning();
 
-    double norm_tolerance = normalizeTolerance(fgdSamples, bgdGMM, tolerance);
+    // determine the set of foreground samples that are most unlikly in the
+    // background dsitribution.
+    vector<double> probabilities(fgdSamples.size());
+    vector<int>    sampleIdx(fgdSamples.size());
+    for (int i = 0; i < (int) fgdSamples.size(); i++) {
+        probabilities[i] = bgdGMM(fgdSamples[i]);
+        sampleIdx[i] = i;
+    }
+    std::sort(sampleIdx.begin(), sampleIdx.end(), [&probabilities] (int const& a, int const& b) {
+        return probabilities[a] < probabilities[b];
+    });
+
+    #ifndef NDEBUG
+        Mat canvas;
+        img.copyTo(canvas);
+    #endif
 
     fgdGMM.initLearning();
-    for (int i = 0; i < (int) fgdSamples.size(); i++) {
-        double probability = bgdGMM(fgdSamples[i]);
+    for (int i = 0; i < sampleIdx.size() * tolerance; i++) {
+        #ifndef NDEBUG
+            cv::circle(canvas, fgdPixels[sampleIdx[i]], 2, cv::Scalar(0, 0, 255), -1);
+        #endif
 
-        if (probability <= norm_tolerance) {
-            fgdGMM.addSample(fgdLabels.at<int>(i, 0), fgdSamples[i]);
-        }
+        fgdGMM.addSample(fgdLabels.at<int>(sampleIdx[i], 0), fgdSamples[sampleIdx[i]]);
     }
     fgdGMM.endLearning();
+
+    #ifndef NDEBUG
+        // display points used for foreground distribution
+        cv::imshow("Foreground selection", canvas);
+    #endif
 }
 
 /**

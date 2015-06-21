@@ -284,8 +284,6 @@ void GCApplication::mouseClick(int event, int x, int y, int flags)
 
 int GCApplication::nextIter()
 {
-    cerr << "tolerance: " << tolerance << endl;
-
     if (isInitialized) {
         grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1, tolerance);
     } else {

@@ -284,8 +284,6 @@ void GCApplication::mouseClick(int event, int x, int y, int flags)
 
 int GCApplication::nextIter()
 {
-    cerr << "tolerance: " << tolerance << endl;
-
     if (isInitialized) {
         grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1, tolerance);
     } else {
@@ -364,9 +362,8 @@ int main(int argc, char **argv)
     setMouseCallback(winName, on_mouse, &gcapp);
     createTrackbar("tolerance", winName, &toleranceSlider, MAX_TOLERANCE, on_trackbar, &gcapp);
 
-    on_trackbar(toleranceSlider, &gcapp);     // set initial tolerance value
     gcapp.setImageAndWinName(image, winName); // initialize app with
-    gcapp.showImage();
+    on_trackbar(toleranceSlider, &gcapp);     // set initial tolerance value
 
     while (true) {
         int c = waitKey(0);

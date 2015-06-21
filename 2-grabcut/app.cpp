@@ -140,13 +140,13 @@ void GCApplication::showImage() const
         circle(canvas, backgroundPixels[i], radius, BLUE, thickness);
     }
     for (int i = 0; i < foregroundPixels.size(); ++i) {
-        circle(canvas, foregroundPixels[i], radius, BLUE, thickness);
+        circle(canvas, foregroundPixels[i], radius, RED, thickness);
     }
     for (int i = 0; i < probablyBackgroundPixels.size(); ++i) {
-        circle(canvas, probablyBackgroundPixels[i], radius, BLUE, thickness);
+        circle(canvas, probablyBackgroundPixels[i], radius, LIGHTBLUE, thickness);
     }
     for (int i = 0; i < probablyForegroundPixels.size(); ++i) {
-        circle(canvas, probablyForegroundPixels[i], radius, BLUE, thickness);
+        circle(canvas, probablyForegroundPixels[i], radius, PINK, thickness);
     }
 
 
@@ -200,6 +200,7 @@ void GCApplication::mouseClick(int event, int x, int y, int flags, void*)
         case CV_EVENT_LBUTTONDOWN: { // set rect or GC_BGD(GC_FGD) labels
             bool isb = (flags & BGD_KEY) != 0,
                  isf = (flags & FGD_KEY) != 0;
+
             if (rectState == NOT_SET && !isb && !isf) {
                 rectState = IN_PROCESS;
                 rect = Rect(x, y, 1, 1);
@@ -259,7 +260,7 @@ void GCApplication::mouseClick(int event, int x, int y, int flags, void*)
 int GCApplication::nextIter()
 {
     if (isInitialized) {
-        grabCut(*image, mask, rect, backgroundModel, foregroundModel, GC_INIT_WITH_MASK);
+        grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1);
     } else {
         // if the application not initialized and the rectangular is not set up be the user
         // we do nothing

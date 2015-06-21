@@ -337,11 +337,9 @@ static void calcNWeights(const Mat &img, Mat &leftW, Mat &upleftW, Mat &upW, Mat
 
     // initialize all matrices
     leftW.create(img.rows, img.cols, CV_64FC1);
+    upleftW.create(img.rows, img.cols, CV_64FC1);
     upW.create(img.rows, img.cols, CV_64FC1);
-    if (connectivity == GC_N8) {
-        upleftW.create(img.rows, img.cols, CV_64FC1);
-        uprightW.create(img.rows, img.cols, CV_64FC1);
-    }
+    uprightW.create(img.rows, img.cols, CV_64FC1);
 
     for (int y = 0; y < img.rows; y++) {
         for (int x = 0; x < img.cols; x++) {

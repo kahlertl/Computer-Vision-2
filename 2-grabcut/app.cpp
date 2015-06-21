@@ -375,14 +375,14 @@ void GCApplication::resetIter()
     showImage();
 }
 
+static inline double trackbarToTolerance(int value) { return (double) value  / (double) MAX_DISTANCE; }
+static inline double trackbarToContrast(int value)  { return (double)  value / (double) MAX_CONTRAST; }
+static inline double trackbarToDistance(int value)  { return (double)  value / (double) MAX_DISTANCE; }
+
 static void onMouse(int event, int x, int y, int flags, void* gcapp)
 {
     ((GCApplication*) gcapp)->mouseClick(event, x, y, flags);
 }
-
-static inline double trackbarToTolerance(int value) { return (double) value / (double) MAX_DISTANCE; }
-static inline double trackbarToContrast(int value)  { return (double)  value / (double) MAX_CONTRAST; }
-static inline double trackbarToDistance(int value)  { return (double)  value / (double) MAX_DISTANCE; }
 
 static void onToleranceTrackbar(int value, void* gcapp)
 {
@@ -399,7 +399,6 @@ static void onDistanceTrackbar(int value, void* gcapp)
     ((GCApplication*) gcapp)->setDistance((value));
 }
 
-
 int main(int argc, const char **argv)
 {
     Mat image;
@@ -411,7 +410,7 @@ int main(int argc, const char **argv)
     // parse command line options
     while (true) {
         int index = -1;
-        int result = getopt_long(argc, (char **) argv, "hr:t:d:m:g:c:l:", long_options, &index);
+        int result = getopt_long(argc, (char **) argv, "hc:", long_options, &index);
 
         // end of parameter list
         if (result == -1) {
@@ -423,7 +422,7 @@ int main(int argc, const char **argv)
                 usage();
                 return 0;
 
-            case 's': {
+            case 'c': {
                 int c = stoi(string(optarg));
                 if (c == 4) {
                     connectivity = GC_N4;
@@ -445,15 +444,16 @@ int main(int argc, const char **argv)
         }
     }
 
+    // load remaining command line argument
     if (!parsePositionalImage(image, CV_LOAD_IMAGE_COLOR, "image", argc, argv)) { return 1; }
 
     help();
 
+    // use the inital value of the slider for the app initialziation
     GCApplication gcapp(trackbarToTolerance(toleranceSlider),
                         trackbarToDistance(distanceSlider),
                         trackbarToContrast(contrastSlider),
                         connectivity);
-
 
     const string winName = "image";
     namedWindow(winName, WINDOW_AUTOSIZE);

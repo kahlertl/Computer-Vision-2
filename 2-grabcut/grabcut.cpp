@@ -113,11 +113,14 @@ GMM::GMM(Mat &_model)
     // +---------------------------------------------------------------------------+
     //  ^             ^                      ^
     //  |             |                      |
-    // coefs         mean                   cov
+    // coefs /       mean                   cov
+    // weight
     //
 
     // number of parameters for each component of the model
-    const int modelSize = 3/*mean*/ + 9/*covariance*/ + 1/*component weight*/;
+    const int modelSize =   1  // component weight
+                          + 3  // mean
+                          + 9; // covariance
     if (_model.empty()) {
         _model.create(1, modelSize * componentsCount, CV_64FC1);
         _model.setTo(Scalar(0));
@@ -132,10 +135,11 @@ GMM::GMM(Mat &_model)
     mean = coefs + componentsCount;
     cov = mean + 3 * componentsCount;
 
-    for (int ci = 0; ci < componentsCount; ci++)
+    for (int ci = 0; ci < componentsCount; ci++) {
         if (coefs[ci] > 0) {
             calcInverseCovAndDeterm(ci);
         }
+    }
 }
 
 
@@ -270,15 +274,15 @@ void GMM::calcInverseCovAndDeterm(int ci)
                              c[2] * (c[3] * c[7] - c[4] * c[6]);
 
         CV_Assert(dtrm > std::numeric_limits<double>::epsilon());
-        inverseCovs[ci][0][0] = (c[4] * c[8] - c[5] * c[7]) / dtrm;
+        inverseCovs[ci][0][0] =  (c[4] * c[8] - c[5] * c[7]) / dtrm;
         inverseCovs[ci][1][0] = -(c[3] * c[8] - c[5] * c[6]) / dtrm;
-        inverseCovs[ci][2][0] = (c[3] * c[7] - c[4] * c[6]) / dtrm;
+        inverseCovs[ci][2][0] =  (c[3] * c[7] - c[4] * c[6]) / dtrm;
         inverseCovs[ci][0][1] = -(c[1] * c[8] - c[2] * c[7]) / dtrm;
-        inverseCovs[ci][1][1] = (c[0] * c[8] - c[2] * c[6]) / dtrm;
+        inverseCovs[ci][1][1] =  (c[0] * c[8] - c[2] * c[6]) / dtrm;
         inverseCovs[ci][2][1] = -(c[0] * c[7] - c[1] * c[6]) / dtrm;
-        inverseCovs[ci][0][2] = (c[1] * c[5] - c[2] * c[4]) / dtrm;
+        inverseCovs[ci][0][2] =  (c[1] * c[5] - c[2] * c[4]) / dtrm;
         inverseCovs[ci][1][2] = -(c[0] * c[5] - c[2] * c[3]) / dtrm;
-        inverseCovs[ci][2][2] = (c[0] * c[4] - c[1] * c[3]) / dtrm;
+        inverseCovs[ci][2][2] =  (c[0] * c[4] - c[1] * c[3]) / dtrm;
     }
 }
 

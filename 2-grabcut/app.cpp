@@ -1,6 +1,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
+#include <getopt.h> // getopt_long()
 
 #include "grabcut.hpp"
 
@@ -8,25 +9,60 @@
 using namespace std;
 using namespace cv;
 
+// command line option list
+static const struct option long_options[] = {
+    { "help",           no_argument,       0, 'h' },
+    { "connectivity",   required_argument, 0, 'c' },
+    0 // end of parameter list
+};
+
+static void usage()
+{
+    cout << "Usage: grabcut [options] image\n\n"
+            "This program demonstrates GrabCut segmentation.\n"
+            "Select an object in a region and then grabcut will attempt to segment it out.\n"
+            "\n"
+            "  options:\n"
+            "    -h, --help            Show this help message\n"
+            "    -c, --connectivity    Neighborhood system that should be used.\n"
+            "                          Default: 4\n\n"; 
+}
+
+static bool parsePositionalImage(Mat& image, const int channels, const string& name, int argc, char const *argv[])
+{
+    if (optind >= argc) {
+        cerr << argv[0] << ": required argument: '" << name << "'" << endl;
+        usage();
+
+        return false;
+    } else {
+        image = imread(argv[optind++], channels);
+
+        if (image.empty()) {
+            cerr << "Error: Cannot read '" << argv[optind] << "'" << endl;
+
+            return false;
+        }
+    }
+
+    return true;
+}
+
 static void help()
 {
-    cout << "\nThis program demonstrates GrabCut segmentation -- select an object in a region\n"
-        "and then grabcut will attempt to segment it out.\n"
-        "Call:\n"
-        "./grabcut <image_name>\n"
-        "\nSelect a rectangular area around the object you want to segment\n" <<
-    "\nHot keys: \n"
-        "\tESC - quit the program\n"
-        "\tr - restore the original image\n"
-        "\tn - next iteration\n"
-        "\n"
-        "\tleft mouse button - set rectangle\n"
-        "\n"
-        "\tCTRL+left mouse button - set GC_BGD pixels\n"
-        "\tSHIFT+left mouse button - set CG_FGD pixels\n"
-        "\n"
-        "\tCTRL+right mouse button - set GC_PR_BGD pixels\n"
-        "\tSHIFT+right mouse button - set CG_PR_FGD pixels\n" << endl;
+    cout << "\nSelect a rectangular area around the object you want to segment\n" <<
+            "\nHot keys: \n"
+            "    ESC - quit the program\n"
+            "    r   - restore the original image\n"
+            "    n   - next iteration\n"
+            "\n"
+            "    left mouse button - set rectangle\n"
+            "\n"
+            "    CTRL +left mouse button - set GC_BGD pixels\n"
+            "    SHIFT+left mouse button - set CG_FGD pixels\n"
+            "\n"
+            "    CTRL +right mouse button - set GC_PR_BGD pixels\n"
+            "    SHIFT+right mouse button - set CG_PR_FGD pixels\n\n";
 }
 
 // color definitions
@@ -65,7 +101,13 @@ class GCApplication
     static const int radius = 2;
     static const int thickness = -1;
 
-    GCApplication(double tolerance = MAX_TOLERANCE) : tolerance(tolerance), image(nullptr), winName(nullptr) {}
+    GCApplication(double tolerance = MAX_TOLERANCE, double lambda = 1, double contrast = 1) :
+        tolerance(tolerance),
+        lambda(lambda),
+        contrast(contrast),
+        image(nullptr),
+        winName(nullptr)
+    {}
 
     void reset();
 
@@ -82,7 +124,9 @@ class GCApplication
      * in an uninitiazed state with, but the rectangular and brush strokes
      * are kept.
      */
-    void setTolerance(double tolerance);
+    inline void setTolerance(double _tolerance) { tolerance = _tolerance; resetIter(iterCount  ); }
+    inline void setContrast(double _contrast)   { contrast = _contrast;   resetIter(iterCount  ); }
+    inline void setLambda(double _lambda)       { lambda   = _lambda;     resetIter(iterCount  ); }
 
     inline int getIterCount() const { return iterCount; }
 
@@ -90,6 +134,8 @@ class GCApplication
     void setRectInMask();
 
     void setLabelsInMask(int flags, Point p, bool isPr);
+
+    void resetIter(int n);
 
     const string *winName;
     const Mat *image;
@@ -110,6 +156,8 @@ class GCApplication
     int iterCount;
 
     double tolerance;
+    double lambda;
+    double contrast;
 };
 
 void GCApplication::reset()
@@ -315,55 +363,79 @@ int GCApplication::nextIter()
     return iterCount;
 }
 
-
-void GCApplication::setTolerance(double _tolerance)
+void GCApplication::resetIter(int n)
 {
-    tolerance     = _tolerance;
     isInitialized = false;
-    iterCount     = 0;
-
+    iterCount   = 0;
     showImage();
 }
 
-static void on_mouse(int event, int x, int y, int flags, void *gcapp)
+static int toleranceSlider = 50;
+static int lambdaSlider   = 100;
+static int contrastSlider   = 100;
+
+static GCApplication gcapp;
+
+static void on_mouse(int event, int x, int y, int flags, void*)
 {
-    ((GCApplication *) gcapp)->mouseClick(event, x, y, flags);
+    gcapp.mouseClick(event, x, y, flags);
 }
 
-static void on_trackbar(int value, void *gcapp)
+static void on_trackbar(int, void*)
 {
-    ((GCApplication *) gcapp)->setTolerance((double) value / (double) MAX_TOLERANCE);
+    gcapp.setTolerance((double) toleranceSlider / (double) MAX_TOLERANCE);
 }
 
-int main(int argc, char **argv)
+int main(int argc, const char **argv)
 {
-    GCApplication gcapp;
+    Mat image;
+    int connectivity = 4;
 
-    if (argc != 2) {
-        help();
-        return 1;
+    // parse command line options
+    while (true) {
+        int index = -1;
+        int result = getopt_long(argc, (char **) argv, "hr:t:d:m:g:c:l:", long_options, &index);
+
+        // end of parameter list
+        if (result == -1) {
+            break;
+        }
+
+        switch (result) {
+            case 'h':
+                usage();
+                return 0;
+
+            case 's':
+                connectivity = stoi(string(optarg));
+                if (connectivity != 4 && connectivity != 8) {
+                    cerr << argv[0] << ": Invalid connectivity " << optarg << ". Only 4 and 8 are supported" << endl;
+                    return 1;
+                }
+                break;
+
+            case '?': // missing option
+                return 1;
+
+            default: // unknown
+                cerr << "unknown parameter: " << optarg << endl;
+                break;
+        }
     }
-    string filename = argv[1];
-    if (filename.empty()) {
-        cout << "\nDurn, couldn't read in " << argv[1] << endl;
-        return 1;
-    }
-    Mat image = imread(filename, 1);
-    if (image.empty()) {
-        cout << "\n Durn, couldn't read image filename " << filename << endl;
-        return 1;
-    }
+
+    if (!parsePositionalImage(image, CV_LOAD_IMAGE_COLOR, "image", argc, argv)) { return 1; }
 
     help();
 
-    int toleranceSlider = 50;
     const string winName = "image";
     namedWindow(winName, WINDOW_AUTOSIZE);
-    setMouseCallback(winName, on_mouse, &gcapp);
-    createTrackbar("tolerance", winName, &toleranceSlider, MAX_TOLERANCE, on_trackbar, &gcapp);
+    setMouseCallback(winName, on_mouse, 0);
+    createTrackbar("tolerance", winName, &toleranceSlider, MAX_TOLERANCE, on_trackbar, 0);
+    createTrackbar("lambda 1", winName, &lambdaSlider, 1000, on_trackbar, 0);
+    createTrackbar("lambda 2", winName, &contrastSlider, 1000, on_trackbar, 0);
 
     gcapp.setImageAndWinName(image, winName); // initialize app with
-    on_trackbar(toleranceSlider, &gcapp);     // set initial tolerance value
+    on_trackbar(toleranceSlider, 0);          // set initial tolerance value
 
     while (true) {
         int c = waitKey(0);
@@ -379,7 +451,7 @@ int main(int argc, char **argv)
             case 'n': {
                 // we need the curly brackets for scope reasons. Otherwise we
                 // the compiler cries, because we could skip the initialziation
-                // of the iterCounter variable
+                // of the iterCount   variable
                 int iterCount = gcapp.getIterCount();
                 cout << "<" << iterCount << "... ";
                 int newIterCount = gcapp.nextIter();

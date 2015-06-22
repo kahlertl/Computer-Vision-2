@@ -500,11 +500,16 @@ int main(int argc, const char **argv)
     setMouseCallback(winName, onMouse, &gcapp);
 
     createTrackbar("tolerance",    winName, &toleranceSlider,    MAX_TOLERANCE,    onToleranceTrackbar,    &gcapp);
-    createTrackbar("connectivity", winName, &connectivitySlider, MAX_CONNECTIVITY, onConnectivityTrackbar, &gcapp);
-    createTrackbar("constrast",    winName, &contrastSlider,     MAX_CONTRAST,     onContrastTrackbar,     &gcapp);
+    // we do not need the extra trackbars if the option is not set
+    if (extended) {
+        createTrackbar("connectivity", winName, &connectivitySlider, MAX_CONNECTIVITY, onConnectivityTrackbar, &gcapp);
+        createTrackbar("constrast",    winName, &contrastSlider,     MAX_CONTRAST,     onContrastTrackbar,     &gcapp);
+    }
 
+    //
     gcapp.setImageAndWinName(image, winName);
 
+    // print settings and help
     cout << gcapp << endl;
     hotkeyHelp();
 

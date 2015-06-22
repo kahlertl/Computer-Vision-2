@@ -378,9 +378,9 @@ void GCApplication::resetIter()
     showImage();
 }
 
-static inline double trackbarToTolerance(int value) { return (double) value  / (double) MAX_DISTANCE; }
-static inline double trackbarToContrast(int value)  { return (double)  value / (double) MAX_CONTRAST; }
-static inline double trackbarToDistance(int value)  { return (double)  value / (double) MAX_DISTANCE; }
+static inline double trackbarToTolerance(int value) { return (double)  value / (double) MAX_TOLERANCE; }
+static inline double trackbarToContrast(int value)  { return (double)  value / (double) MAX_CONTRAST;  }
+static inline double trackbarToDistance(int value)  { return (double)  value / (double) MAX_DISTANCE;  }
 
 static void onMouse(int event, int x, int y, int flags, void* gcapp)
 {

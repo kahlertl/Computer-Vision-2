@@ -43,7 +43,7 @@ static const struct option long_options[] = {
 
 static void usage()
 {
-    cout << "Usage: facedetector [options] image" << endl
+    cout << "Usage: faceseg [options] image" << endl
     << endl
     << "This program will find and segment a faces from a given image" << endl
     << endl

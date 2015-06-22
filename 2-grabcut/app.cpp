@@ -138,6 +138,7 @@ class GCApplication
 
     inline int getIterCount() const { return iterCount; }
 
+    friend ostream& operator<< (ostream& stream, const GCApplication& gcapp);
   private:
     void setRectInMask();
 
@@ -386,6 +387,16 @@ void GCApplication::resetIter()
     showImage();
 }
 
+ostream& operator<< (ostream& stream, const GCApplication& gcapp)
+{
+    return stream << "GCApplication \"" << gcapp.winName << "\"\n"
+                     "    extended binary:  " << (gcapp.extended ? "true" : "false") << "\n"
+                     "    connectivity:     " << gcapp.connectivity << "\n"
+                     "    tolerance:        " << gcapp.tolerance << "\n"
+                     "    distance:         " << gcapp.distance << "\n"
+                     "    contrast:         " << gcapp.contrast << "\n";
+}
+
 static inline double trackbarToTolerance(int value) { return (double)  value / (double) MAX_TOLERANCE; }
 static inline double trackbarToContrast(int value)  { return (double)  value / (double) MAX_CONTRAST;  }
 static inline double trackbarToDistance(int value)  { return (double)  value / (double) MAX_DISTANCE;  }
@@ -467,12 +478,11 @@ int main(int argc, const char **argv)
     // load remaining command line argument
     if (!parsePositionalImage(image, CV_LOAD_IMAGE_COLOR, "image", argc, argv)) { return 1; }
 
-    help();
-
     // use the inital value of the slider for the app initialziation
     GCApplication gcapp(trackbarToTolerance(toleranceSlider),
                         trackbarToDistance(distanceSlider),
                         trackbarToContrast(contrastSlider),
+                        extended,
                         connectivity);
 
     const string winName = "image";
@@ -485,6 +495,10 @@ int main(int argc, const char **argv)
     createTrackbar("constrast", winName, &contrastSlider,  MAX_CONTRAST,  onContrastTrackbar,  &gcapp);
 
     gcapp.setImageAndWinName(image, winName);
+
+    cout << gcapp << endl;
+    help();
+
     gcapp.showImage();
 
     while (true) {

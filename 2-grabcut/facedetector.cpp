@@ -8,7 +8,6 @@
 using namespace std;
 using namespace cv;
 
-const string windowName  = "Face detection";
 
 // Defaults for the Extended GraphCut parameters
 int iterations      = 3;     // number iterations
@@ -90,17 +89,6 @@ static void wait(const string& message = "Press ESC to continue ...")
     }
 }
 
-static void getBinMask(const Mat &comMask, Mat &binMask)
-{
-    if (comMask.empty() || comMask.type() != CV_8UC1) {
-        CV_Error(CV_StsBadArg, "comMask is empty or has incorrect type (not CV_8UC1)");
-    }
-    if (binMask.empty() || binMask.rows != comMask.rows || binMask.cols != comMask.cols) {
-        binMask.create(comMask.size(), CV_8UC1);
-    }
-    binMask = comMask & 1;
-}
-
 void displaySegmentation(const Mat& image, const Mat& mask)
 {
     Mat binMask;
@@ -110,7 +98,7 @@ void displaySegmentation(const Mat& image, const Mat& mask)
     Mat segmentation;
     image.copyTo(segmentation, binMask);
 
-    imshow(windowName, segmentation);
+    imshow("Segmentation", segmentation);
 }
 
 void segmentFace(const Mat& image, Mat& mask, Mat& canvas, Rect& face, vector<Rect>& eyes)
@@ -137,15 +125,6 @@ void segmentFace(const Mat& image, Mat& mask, Mat& canvas, Rect& face, vector<Re
     mask.setTo(GC_BGD);
     (mask(rect)).setTo(Scalar(GC_PR_FGD));
 
-    //mask.setTo(GC_BGD);
-    //
-    //face.x = max(0, face.x);
-    //face.y = max(0, face.y);
-    //face.width  = min(face.width, image.cols - face.x);
-    //face.height = min(face.height, image.rows - face.y);
-    //
-    (mask(face)).setTo(Scalar(GC_PR_FGD));
-
     for (int i = 0; i < eyes.size(); i++) {
         eyes[i].x += face.x;
         eyes[i].y += face.y;
@@ -156,20 +135,17 @@ void segmentFace(const Mat& image, Mat& mask, Mat& canvas, Rect& face, vector<Re
         (mask(eyes[i])).setTo(Scalar(GC_FGD));
     }
 
-    cerr << "Perform GrabCut with " << iterations << " ... " << endl;
-    //grabCut(image, mask, face, backgroundModel, foregroundModel, iterations, GC_INIT_WITH_RECT);
+    cerr << "Perform GrabCut ... ";
     grabCut(image, mask, face, backgroundModel, foregroundModel, iterations,
             tolerance, extended, connectivity, contrast, neighbors, GC_INIT_WITH_MASK);
+    cerr << "Done" << endl;
 
 }
 
 int main(int argc, char const *argv[])
 {
-    CascadeClassifier faceCascade;
-    CascadeClassifier eyesCascade;
-    Mat image;
-    Mat grayImage;
-    Mat canvas;
+    CascadeClassifier faceCascade, eyesCascade;
+    Mat image, grayImage, canvas, finalMask;
 
     // parse command line options
     while (true) {
@@ -213,23 +189,23 @@ int main(int argc, char const *argv[])
         cerr << "Error: can not load eye cascade \"" << eyesCascadeName << "\"" << endl;
         return 1;
     };
-
-
-    std::vector<Rect> faces;
-    Mat frame_gray;
-
+    // initialize canvas with original image
     image.copyTo(canvas);
 
+    // the final mask is the union of all found segmentations
+    finalMask.create(image.size(), CV_8UC1);
+    finalMask.setTo(GC_BGD);
 
     cvtColor(image, grayImage, CV_BGR2GRAY);
 
+    cerr << "Detect faces ... ";
+    vector<Rect> faces;
     faceCascade.detectMultiScale(grayImage, faces, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
-
-    Mat totalMask(image.size(), CV_8UC1);
-    totalMask.setTo(GC_BGD);
+    cerr << "Done" << endl;
 
     // inpaint the found regions
     for (int i = 0; i < faces.size(); i++) {
+        cerr << "Face " << i << " ... " << endl;
         Mat mask;
         // get region of interest (RIO) for eye detection
         Mat faceROI = grayImage(faces[i]);
@@ -239,21 +215,19 @@ int main(int argc, char const *argv[])
         eyesCascade.detectMultiScale(faceROI, eyes, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
 
         segmentFace(image, mask, canvas, faces[i], eyes);
-        totalMask |= mask;
+        finalMask |= mask;
 
         // give OS time to display images
         waitKey(300);
     }
 
-    namedWindow(windowName, WINDOW_AUTOSIZE);
-    namedWindow("sections", WINDOW_AUTOSIZE);
+    namedWindow("Segmentation", WINDOW_AUTOSIZE);
+    namedWindow("Detection", WINDOW_AUTOSIZE);
 
-    imshow("sections", canvas);
-    displaySegmentation(image, totalMask);
+    imshow("Detection", canvas);
+    displaySegmentation(image, finalMask);
 
-    //imshow(windowName, canvas);
     wait("Press ESC to exit ...");
-
 
     return 0;
 }

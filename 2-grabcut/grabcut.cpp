@@ -760,10 +760,6 @@ void cv::grabCut(InputArray _img, InputOutputArray _mask, Rect rect,
                  double connectivity, double contrast,
                  int neighbors, int mode)
 {
-    std::cerr << "tolerance:    " << tolerance << std::endl;
-    std::cerr << "connectivity: " << connectivity << std::endl;
-    std::cerr << "contrast:     " << contrast << std::endl;
-
     Mat img = _img.getMat();
     Mat &mask = _mask.getMatRef();
     Mat &bgdModel = _bgdModel.getMatRef();
@@ -804,7 +800,6 @@ void cv::grabCut(InputArray _img, InputOutputArray _mask, Rect rect,
     
     if (extended) {
         const double beta = calcExtendedBeta(img, neighbors);
-        std::cerr << "beta = " << beta << std::endl;
         calcExtendedNWeights(img, leftW, upleftW, upW, uprightW, beta, connectivity, contrast, neighbors);
     } else {
         const double beta = calcBeta(img, neighbors);
@@ -813,7 +808,6 @@ void cv::grabCut(InputArray _img, InputOutputArray _mask, Rect rect,
 
 
     for (int i = 0; i < iterCount; i++) {
-        std::cerr << "iteration " << i << " ..." << std::endl;
         GCGraph<double> graph;
         assignGMMsComponents(img, mask, bgdGMM, fgdGMM, compIdxs);
         learnGMMs(img, mask, compIdxs, bgdGMM, fgdGMM);

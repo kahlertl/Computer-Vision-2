@@ -287,41 +287,63 @@ void GMM::calcInverseCovAndDeterm(int ci)
 }
 
 /**
+ * Returns the number of edges in a graph of the image with
+ * the given connectivity.
+ */
+static inline double countEdges(const Mat &img, int connectivity)
+{
+    if (connectivity == GC_N4) {
+        return   2 * img.cols * img.rows // each pixel has 2 neighbors (left, up)
+               - img.cols                // the first colum has no left 
+               - img.rows                // the first row has no up
+               + 1;                      // we removed the upper left corner twice
+    } else {
+        return   4 * img.cols * img.rows // each pixel has 4 neighbors (left, upleft, up, upright)
+               - 3 * img.cols            // the first colum has no left and upleft and the last colum
+                                         // has no upright
+               - 3 * img.rows            // the first row has only left neigbors
+               + 2;                      // we removed the upper left and upper right corner twice
+    }
+}
+
+/**
  * Calculate beta - parameter of GrabCut algorithm.
  *
  * beta = 1 / (2 * avg(sqr(||color[i] - color[j]||)))
  */
-static double calcBeta(const Mat &img)
+static double calcBeta(const Mat &img, int connectivity)
 {
     double beta = 0;
     for (int y = 0; y < img.rows; y++) {
         for (int x = 0; x < img.cols; x++) {
             Vec3d color = img.at<Vec3b>(y, x);
-            if (x > 0) { // left
+            // left
+            if (x > 0) {
                 Vec3d diff = color - (Vec3d) img.at<Vec3b>(y, x - 1);
                 beta += diff.dot(diff);
             }
-            if (y > 0 && x > 0) { // upleft
+            // upleft
+            if (connectivity == GC_N8 && y > 0 && x > 0) {
                 Vec3d diff = color - (Vec3d) img.at<Vec3b>(y - 1, x - 1);
                 beta += diff.dot(diff);
             }
-            if (y > 0) { // up
+            // up
+            if (y > 0) {
                 Vec3d diff = color - (Vec3d) img.at<Vec3b>(y - 1, x);
                 beta += diff.dot(diff);
             }
-            if (y > 0 && x < img.cols - 1) { // upright
+            // upright
+            if (connectivity == GC_N8 && y > 0 && x < img.cols - 1) {
                 Vec3d diff = color - (Vec3d) img.at<Vec3b>(y - 1, x + 1);
                 beta += diff.dot(diff);
             }
         }
     }
     if (beta <= std::numeric_limits<double>::epsilon()) {
-        beta = 0;
+        return 0;
     } else {
-        beta = 1.f / (2 * beta / (4 * img.cols * img.rows - 3 * img.cols - 3 * img.rows + 2));
+        return 1.f / (2 * beta / countEdges(img, connectivity));
     }
-
-    return beta;
 }
 
 /**
@@ -672,7 +694,7 @@ void cv::grabCut(InputArray _img, InputOutputArray _mask, Rect rect,
 
     const double gamma = 50;
     const double lambda = 9 * gamma;
-    const double beta = calcBeta(img);
+    const double beta = calcBeta(img, connectivity);
 
     Mat leftW, upleftW, upW, uprightW;
     calcNWeights(img, leftW, upleftW, upW, uprightW, beta, gamma, connectivity);

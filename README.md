@@ -1,6 +1,6 @@
 # Computer Vision 2
 
-[![build status](https://square-src.de/ci/projects/7/status.png?ref=master)](https://square-src.de/ci/projects/7?ref=master)
+[![build status](https://square-src.de/ci/projects/7/status.png?ref=grabcut)](https://square-src.de/ci/projects/7?ref=master)
 
 Source code for the exercises related to my Computer Vision 2 course, taken at
 the TU Dresden in summer semester 2015.
@@ -27,7 +27,7 @@ $ mkdir build
 $ cd build/
 # You can also specify "Debug" as build type to get some more verbose
 # print statements
-$ cmake -DCMAKE_BUILD_TYPE=Release ..
+$ cmake -D CMAKE_BUILD_TYPE=Release ..
 $ make patchmatch
 
 # run your binary

@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
+
 project(cv2)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
@@ -12,4 +13,5 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # include the different tasks
-add_subdirectory(1-patch-match)
+add_subdirectory(1-patch-match/)
+add_subdirectory(2-grabcut/)

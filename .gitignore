@@ -10,3 +10,8 @@ build/
 *.pdf
 *.aux
 
+# Sublime Text
+*.sublime-workspace
+
+# CLion
+.idea/

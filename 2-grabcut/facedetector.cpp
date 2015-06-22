@@ -101,38 +101,56 @@ void displaySegmentation(const Mat& image, const Mat& mask)
     imshow("Segmentation", segmentation);
 }
 
+static void sanitizeRectangular(const Mat& image, Rect& rect)
+{
+    rect.x = max(0, rect.x);
+    rect.y = max(0, rect.y);
+    rect.width = min(rect.width, image.cols - rect.x);
+    rect.height = min(rect.height, image.rows - rect.y);
+}
+
 void segmentFace(const Mat& image, Mat& mask, Mat& canvas, Rect& face, vector<Rect>& eyes)
 {
 
     Mat backgroundModel, foregroundModel;
 
-    // increase face region
+    // scale face region with 1.5
     Rect rect = face;
     rect.x -= rect.width  / 4;
     rect.y -= rect.height / 4;
     rect.width  *= 1.5;
     rect.height *= 1.5;
 
-    // sanitize face region
-    rect.x = max(0, rect.x);
-    rect.y = max(0, rect.y);
-    rect.width = min(rect.width, image.cols - rect.x);
-    rect.height = min(rect.height, image.rows - rect.y);
+    sanitizeRectangular(image, rect);
 
+    // paint rectangular around the face region
     rectangle(canvas, rect, BLUE, thickness, connected, shift);
 
+    // initialize GrabCut mask
+    // the face region is the typical GrabCut rectangular
     mask.create(image.size(), CV_8UC1);
     mask.setTo(GC_BGD);
     (mask(rect)).setTo(Scalar(GC_PR_FGD));
 
+    // Each tracked eye will set hard to foreground
     for (int i = 0; i < eyes.size(); i++) {
-        eyes[i].x += face.x;
-        eyes[i].y += face.y;
+        rect = eyes[i];
+
+        // move rectangular to correct global position
+        // in the image
+        rect.x += face.x;
+        rect.y += face.y;
+
+        // decrease size of the eye rectangular
+        rect.x += rect.width / 4;
+        rect.y += rect.height / 4;
+        rect.width  *= 0.75;
+        rect.height *= 0.75;
 
         // inpaint eye regions as circles
-        rectangle(canvas, eyes[i], RED, thickness, connected, shift);
+        rectangle(canvas, rect, RED, thickness, connected, shift);
 
-        (mask(eyes[i])).setTo(Scalar(GC_FGD));
+        (mask(rect)).setTo(Scalar(GC_FGD));
     }
 
     cerr << "Perform GrabCut ... ";
@@ -167,6 +185,7 @@ int main(int argc, char const *argv[])
 
             case 'f':
                 faceCascadeName = string(optarg);
+                break;
 
             case '?': // missing option
                 return 1;

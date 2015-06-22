@@ -83,9 +83,9 @@ const Scalar GREEN     = Scalar(  0, 255,   0);
 const int BGD_KEY = CV_EVENT_FLAG_CTRLKEY;
 const int FGD_KEY = CV_EVENT_FLAG_SHIFTKEY;
 
-const int MAX_TOLERANCE     =  100;
-const int MAX_CONNECTIVITY  = 1000;
-const int MAX_CONTRAST      = 1000;
+const int MAX_TOLERANCE     =   100;
+const int MAX_CONNECTIVITY  = 10000;
+const int MAX_CONTRAST      = 10000;
 
 static void getBinMask(const Mat &comMask, Mat &binMask)
 {
@@ -137,9 +137,9 @@ class GCApplication
      * in an uninitiazed state with, but the rectangular and brush strokes
      * are kept.
      */
-    inline void setTolerance(double _tolerance)      { tolerance = _tolerance;        resetIter(); }
-    inline void setContrast(double _contrast)        { contrast  = _contrast;         resetIter(); }
-    inline void setConnectivity(double connectivity) { connectivity  = connectivity;  resetIter(); }
+    inline void setTolerance(double _tolerance)       { tolerance = _tolerance;        resetIter(); }
+    inline void setContrast(double _contrast)         { contrast  = _contrast;         resetIter(); }
+    inline void setConnectivity(double _connectivity) { connectivity  = _connectivity; resetIter(); }
 
     inline int getIterCount() const { return iterCount; }
 
@@ -406,8 +406,8 @@ ostream& operator<< (ostream& stream, const GCApplication& gcapp)
 }
 
 static inline double trackbarToTolerance(int value)    { return (double)  value / (double) MAX_TOLERANCE; }
-static inline double trackbarToContrast(int value)     { return (double)  value / (double) MAX_CONTRAST;  }
-static inline double trackbarToConnectivity(int value) { return (double)  value / (double) MAX_CONNECTIVITY;  }
+static inline double trackbarToContrast(int value)     { return (double)  100 * value / (double) MAX_CONTRAST;  }
+static inline double trackbarToConnectivity(int value) { return (double)  100 * value / (double) MAX_CONNECTIVITY;  }
 
 static void onMouse(int event, int x, int y, int flags, void* gcapp)
 {
@@ -421,12 +421,12 @@ static void onToleranceTrackbar(int value, void* gcapp)
 
 static void onContrastTrackbar(int value, void* gcapp)
 {
-    ((GCApplication*) gcapp)->setContrast((value));
+    ((GCApplication*) gcapp)->setContrast(trackbarToContrast(value));
 }
 
 static void onConnectivityTrackbar(int value, void* gcapp)
 {
-    ((GCApplication*) gcapp)->setConnectivity((value));
+    ((GCApplication*) gcapp)->setConnectivity(trackbarToConnectivity(value));
 }
 
 int main(int argc, const char **argv)

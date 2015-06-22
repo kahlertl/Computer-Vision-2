@@ -385,9 +385,59 @@ static double calcExtendedBeta(const Mat &img, int neighbors)
 }
 
 static void calcExtendedNWeights(const Mat &img, Mat &leftW, Mat &upleftW, Mat &upW, Mat &uprightW,
-                                 double beta, double gamma, int neighbors)
+                                 double beta, double connectivity, double contrast, int neighbors)
 {
-    CV_Error(CV_StsNotImplemented,"not implemented yet");
+    // with this hack, because the exponential part will always be in the interval (0, 1]
+    // setting contrast = connectivity, the pairwise term only positive values.
+    if (contrast > connectivity) {
+        std::cerr << "[warn] contrast > connectivity, set contrast = connectivity" << std::endl;
+        contrast = connectivity;
+    }
+
+    // initialize all matrices
+    leftW.create(img.rows, img.cols, CV_64FC1);
+    upW.create(img.rows, img.cols, CV_64FC1);
+
+    if (neighbors == GC_N8) {
+        upleftW.create(img.rows, img.cols, CV_64FC1);
+        uprightW.create(img.rows, img.cols, CV_64FC1);
+    }
+
+    for (int y = 0; y < img.rows; y++) {
+        for (int x = 0; x < img.cols; x++) {
+            Vec3d color = img.at<Vec3b>(y, x);
+            // left
+            if (x - 1 >= 0) {
+                const Vec3d diff = color - (Vec3d) img.at<Vec3b>(y, x - 1);
+                leftW.at<double>(y, x) = connectivity - contrast * exp(-beta * norm(diff));
+            } else {
+                leftW.at<double>(y, x) = 0;
+            }
+            // up
+            if (y - 1 >= 0) {
+                const Vec3d diff = color - (Vec3d) img.at<Vec3b>(y - 1, x);
+                upW.at<double>(y, x) = connectivity - contrast * exp(-beta * norm(diff));
+            } else {
+                upW.at<double>(y, x) = 0;
+            }
+            if (neighbors == GC_N8) {
+                // upleft
+                if (x - 1 >= 0 && y - 1 >= 0) {
+                    const Vec3d diff = color - (Vec3d) img.at<Vec3b>(y - 1, x - 1);
+                    upleftW.at<double>(y, x) = connectivity - contrast * exp(-beta * norm(diff));
+                } else {
+                    upleftW.at<double>(y, x) = 0;
+                }
+                // upright
+                if (x + 1 < img.cols && y - 1 >= 0) {
+                    const Vec3d diff = color - (Vec3d) img.at<Vec3b>(y - 1, x + 1);
+                    uprightW.at<double>(y, x) = connectivity - contrast * exp(-beta * norm(diff));
+                } else {
+                    uprightW.at<double>(y, x) = 0;
+                }
+            }
+        }
+    }
 }
 
 /**
@@ -403,9 +453,12 @@ static void calcNWeights(const Mat &img, Mat &leftW, Mat &upleftW, Mat &upW, Mat
 
     // initialize all matrices
     leftW.create(img.rows, img.cols, CV_64FC1);
-    upleftW.create(img.rows, img.cols, CV_64FC1);
     upW.create(img.rows, img.cols, CV_64FC1);
-    uprightW.create(img.rows, img.cols, CV_64FC1);
+
+    if (neighbors == GC_N8) {
+        upleftW.create(img.rows, img.cols, CV_64FC1);
+        uprightW.create(img.rows, img.cols, CV_64FC1);
+    }
 
     for (int y = 0; y < img.rows; y++) {
         for (int x = 0; x < img.cols; x++) {
@@ -417,13 +470,6 @@ static void calcNWeights(const Mat &img, Mat &leftW, Mat &upleftW, Mat &upW, Mat
             } else {
                 leftW.at<double>(y, x) = 0;
             }
-            // upleft
-            if (neighbors == GC_N8 && x - 1 >= 0 && y - 1 >= 0) {
-                Vec3d diff = color - (Vec3d) img.at<Vec3b>(y - 1, x - 1);
-                upleftW.at<double>(y, x) = gammaDivSqrt2 * exp(-beta * diff.dot(diff));
-            } else {
-                upleftW.at<double>(y, x) = 0;
-            }
             // up
             if (y - 1 >= 0) {
                 Vec3d diff = color - (Vec3d) img.at<Vec3b>(y - 1, x);
@@ -431,12 +477,21 @@ static void calcNWeights(const Mat &img, Mat &leftW, Mat &upleftW, Mat &upW, Mat
             } else {
                 upW.at<double>(y, x) = 0;
             }
-            // upright
-            if (neighbors == GC_N8 && x + 1 < img.cols && y - 1 >= 0) {
-                Vec3d diff = color - (Vec3d) img.at<Vec3b>(y - 1, x + 1);
-                uprightW.at<double>(y, x) = gammaDivSqrt2 * exp(-beta * diff.dot(diff));
-            } else {
-                uprightW.at<double>(y, x) = 0;
+            if (neighbors == GC_N8) {
+                // upleft
+                if (x - 1 >= 0 && y - 1 >= 0) {
+                    Vec3d diff = color - (Vec3d) img.at<Vec3b>(y - 1, x - 1);
+                    upleftW.at<double>(y, x) = gammaDivSqrt2 * exp(-beta * diff.dot(diff));
+                } else {
+                    upleftW.at<double>(y, x) = 0;
+                }
+                // upright
+                if (x + 1 < img.cols && y - 1 >= 0) {
+                    Vec3d diff = color - (Vec3d) img.at<Vec3b>(y - 1, x + 1);
+                    uprightW.at<double>(y, x) = gammaDivSqrt2 * exp(-beta * diff.dot(diff));
+                } else {
+                    uprightW.at<double>(y, x) = 0;
+                }
             }
         }
     }
@@ -705,6 +760,10 @@ void cv::grabCut(InputArray _img, InputOutputArray _mask, Rect rect,
                  double connectivity, double contrast,
                  int neighbors, int mode)
 {
+    std::cerr << "tolerance:    " << tolerance << std::endl;
+    std::cerr << "connectivity: " << connectivity << std::endl;
+    std::cerr << "contrast:     " << contrast << std::endl;
+
     Mat img = _img.getMat();
     Mat &mask = _mask.getMatRef();
     Mat &bgdModel = _bgdModel.getMatRef();
@@ -745,7 +804,8 @@ void cv::grabCut(InputArray _img, InputOutputArray _mask, Rect rect,
     
     if (extended) {
         const double beta = calcExtendedBeta(img, neighbors);
-        calcExtendedNWeights(img, leftW, upleftW, upW, uprightW, beta, gamma, neighbors);
+        std::cerr << "beta = " << beta << std::endl;
+        calcExtendedNWeights(img, leftW, upleftW, upW, uprightW, beta, connectivity, contrast, neighbors);
     } else {
         const double beta = calcBeta(img, neighbors);
         calcNWeights(img, leftW, upleftW, upW, uprightW, beta, gamma, neighbors);

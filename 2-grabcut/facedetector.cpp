@@ -3,13 +3,32 @@
 #include "opencv2/objdetect/objdetect.hpp"
 #include <getopt.h> // getopt_long()
 
+#include "grabcut.hpp"
+
 using namespace std;
 using namespace cv;
 
 const string windowName  = "Face detection";
 
+// Defaults for the Extended GraphCut parameters
+int iterations      = 3;     // number iterations
+double tolerance    = 0.5;
+int neighbors       = GC_N8;
+bool extended       = false;
+double connectivity = 25;
+double contrast     = 10;
+
 const Scalar BLUE = Scalar(255, 0, 0);
 const Scalar RED  = Scalar(0, 0, 255);
+
+// drawing parameters
+const int thickness  = 2;   // Thickness of the ellipse arc outline, if positive.
+                            // Otherwise, this indicates that a filled ellipse sector is to be drawn.
+const int shift      = 0;   // Number of fractional bits in the coordinates of the center and values of axes
+const int angle      = 0;   // Ellipse rotation angle in degrees.
+const int startAngle = 0;   // Starting angle of the elliptic arc in degrees.
+const int endAngle   = 360; // Ending angle of the elliptic arc in degrees.
+const int connected  = 8;
 
 // command line defaults
 string faceCascadeName = "haarcascade_frontalface_alt.xml";
@@ -61,6 +80,89 @@ static bool parsePositionalImage(Mat &image, const int channels, const string &n
     return true;
 }
 
+static void wait(const string& message = "Press ESC to continue ...")
+{
+    cerr << message << endl;
+    while (true) {
+        if ((uchar) waitKey(0) == '\x1b') {
+            break;
+        }
+    }
+}
+
+static void getBinMask(const Mat &comMask, Mat &binMask)
+{
+    if (comMask.empty() || comMask.type() != CV_8UC1) {
+        CV_Error(CV_StsBadArg, "comMask is empty or has incorrect type (not CV_8UC1)");
+    }
+    if (binMask.empty() || binMask.rows != comMask.rows || binMask.cols != comMask.cols) {
+        binMask.create(comMask.size(), CV_8UC1);
+    }
+    binMask = comMask & 1;
+}
+
+void displaySegmentation(const Mat& image, const Mat& mask)
+{
+    Mat binMask;
+    binMask.create(mask.size(), CV_8UC1);
+    binMask = mask & 1;
+
+    Mat segmentation;
+    image.copyTo(segmentation, binMask);
+
+    imshow(windowName, segmentation);
+}
+
+void segmentFace(const Mat& image, Mat& mask, Mat& canvas, Rect& face, vector<Rect>& eyes)
+{
+
+    Mat backgroundModel, foregroundModel;
+
+    // increase face region
+    Rect rect = face;
+    rect.x -= rect.width  / 4;
+    rect.y -= rect.height / 4;
+    rect.width  *= 1.5;
+    rect.height *= 1.5;
+
+    // sanitize face region
+    rect.x = max(0, rect.x);
+    rect.y = max(0, rect.y);
+    rect.width = min(rect.width, image.cols - rect.x);
+    rect.height = min(rect.height, image.rows - rect.y);
+
+    rectangle(canvas, rect, BLUE, thickness, connected, shift);
+
+    mask.create(image.size(), CV_8UC1);
+    mask.setTo(GC_BGD);
+    (mask(rect)).setTo(Scalar(GC_PR_FGD));
+
+    //mask.setTo(GC_BGD);
+    //
+    //face.x = max(0, face.x);
+    //face.y = max(0, face.y);
+    //face.width  = min(face.width, image.cols - face.x);
+    //face.height = min(face.height, image.rows - face.y);
+    //
+    (mask(face)).setTo(Scalar(GC_PR_FGD));
+
+    for (int i = 0; i < eyes.size(); i++) {
+        eyes[i].x += face.x;
+        eyes[i].y += face.y;
+
+        // inpaint eye regions as circles
+        rectangle(canvas, eyes[i], RED, thickness, connected, shift);
+
+        (mask(eyes[i])).setTo(Scalar(GC_FGD));
+    }
+
+    cerr << "Perform GrabCut with " << iterations << " ... " << endl;
+    //grabCut(image, mask, face, backgroundModel, foregroundModel, iterations, GC_INIT_WITH_RECT);
+    grabCut(image, mask, face, backgroundModel, foregroundModel, iterations,
+            tolerance, extended, connectivity, contrast, neighbors, GC_INIT_WITH_MASK);
+
+}
+
 int main(int argc, char const *argv[])
 {
     CascadeClassifier faceCascade;
@@ -72,7 +174,7 @@ int main(int argc, char const *argv[])
     // parse command line options
     while (true) {
         int index = -1;
-        int result = getopt_long(argc, (char **) argv, "hen:", long_options, &index);
+        int result = getopt_long(argc, (char **) argv, "he:f:", long_options, &index);
 
         // end of parameter list
         if (result == -1) {
@@ -83,12 +185,18 @@ int main(int argc, char const *argv[])
             case 'h':
                 usage();
                 return 0;
+            case 'e':
+                eyesCascadeName = string(optarg);
+                break;
+
+            case 'f':
+                faceCascadeName = string(optarg);
 
             case '?': // missing option
                 return 1;
 
             default: // unknown
-                cerr << "unknown parameter: " << optarg << endl;
+                cerr << "Error: unknown parameter: " << optarg << endl;
                 break;
         }
     }
@@ -106,33 +214,23 @@ int main(int argc, char const *argv[])
         return 1;
     };
 
+
     std::vector<Rect> faces;
     Mat frame_gray;
 
     image.copyTo(canvas);
+
+
     cvtColor(image, grayImage, CV_BGR2GRAY);
-    // equalizeHist(grayImage, grayImage);
 
     faceCascade.detectMultiScale(grayImage, faces, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
 
-    // drawing parameters
-    const int thickness  = 4;   // Thickness of the ellipse arc outline, if positive.
-                                // Otherwise, this indicates that a filled ellipse sector is to be drawn.
-    const int shift      = 0;   // Number of fractional bits in the coordinates of the center and values of axes
-    const int angle      = 0;   // Ellipse rotation angle in degrees.
-    const int startAngle = 0;   // Starting angle of the elliptic arc in degrees.
-    const int endAngle   = 360; // Ending angle of the elliptic arc in degrees.
-    const int connected  = 8;
+    Mat totalMask(image.size(), CV_8UC1);
+    totalMask.setTo(GC_BGD);
 
     // inpaint the found regions
     for (int i = 0; i < faces.size(); i++) {
-        // draw ellipse around face region
-        Point center(faces[i].x + faces[i].width  / 2,
-                     faces[i].y + faces[i].height / 2);
-        Size axes(faces[i].width / 2,
-                  faces[i].height / 2);
-        ellipse(canvas, center, axes, angle, startAngle, endAngle, BLUE, thickness, connected, shift);
-
+        Mat mask;
         // get region of interest (RIO) for eye detection
         Mat faceROI = grayImage(faces[i]);
         std::vector<Rect> eyes;
@@ -140,23 +238,22 @@ int main(int argc, char const *argv[])
         // In each face, detect eyes
         eyesCascade.detectMultiScale(faceROI, eyes, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
 
-        // inpaint eye regions as circles
-        for (int j = 0; j < eyes.size(); j++) {
-            center.x = faces[i].x + eyes[j].x + eyes[j].width / 2;
-            center.y = faces[i].y + eyes[j].y + eyes[j].height / 2;
+        segmentFace(image, mask, canvas, faces[i], eyes);
+        totalMask |= mask;
 
-            int radius = cvRound((eyes[j].width + eyes[j].height) * 0.25);
-            circle(canvas, center, radius, RED, thickness, connected, shift);
-        }
+        // give OS time to display images
+        waitKey(300);
     }
-    imshow(windowName, canvas);
 
-    cerr << "Press ESC to exit ..." << endl;
-    while (true) {
-        if ((uchar) waitKey(0) == '\x1b') {
-            break;
-        }
-    }
+    namedWindow(windowName, WINDOW_AUTOSIZE);
+    namedWindow("sections", WINDOW_AUTOSIZE);
+
+    imshow("sections", canvas);
+    displaySegmentation(image, totalMask);
+
+    //imshow(windowName, canvas);
+    wait("Press ESC to exit ...");
+
 
     return 0;
 }

@@ -813,6 +813,7 @@ void cv::grabCut(InputArray _img, InputOutputArray _mask, Rect rect,
 
 
     for (int i = 0; i < iterCount; i++) {
+        std::cerr << "iteration " << i << " ..." << std::endl;
         GCGraph<double> graph;
         assignGMMsComponents(img, mask, bgdGMM, fgdGMM, compIdxs);
         learnGMMs(img, mask, compIdxs, bgdGMM, fgdGMM);

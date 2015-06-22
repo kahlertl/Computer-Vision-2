@@ -1,5 +1,5 @@
 add_executable(grabcut app.cpp grabcut.cpp)
-add_executable(facedetector facedetector.cpp)
+add_executable(facedetector facedetector.cpp grabcut.cpp)
 
 target_link_libraries(grabcut ${OpenCV_LIBS})
 target_link_libraries(facedetector ${OpenCV_LIBS})

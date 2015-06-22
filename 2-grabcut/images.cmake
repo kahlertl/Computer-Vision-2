@@ -4,5 +4,14 @@
 message(STATUS "Downloading fruits.jpg")
 file(DOWNLOAD https://raw.githubusercontent.com/Itseez/opencv/master/samples/data/fruits.jpg ${DESTINATION}/fruits.jpg)
 
-file(COPY ${SOURCE}/lama.bmp ${SOURCE}/face4.png
-     DESTINATION ${DESTINATION})
+set(IMAGES lama.bmp
+           face1.png
+           face2.png
+           face3.png
+           face4.png)
+
+foreach(IMAGE ${IMAGES})
+    file(COPY ${SOURCE}/${IMAGE}
+         DESTINATION ${DESTINATION})
+endforeach()
+

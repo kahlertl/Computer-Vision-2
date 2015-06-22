@@ -2,7 +2,10 @@ add_executable(grabcut app.cpp grabcut.cpp)
 
 target_link_libraries(grabcut ${OpenCV_LIBS})
 
-set(images images/face4.png
+set(images images/face1.png
+           images/face2.png
+           images/face3.png
+           images/face4.png
            images/lama.bmp
            images/fruits.png)
 

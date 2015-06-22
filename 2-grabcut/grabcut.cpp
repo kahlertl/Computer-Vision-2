@@ -288,11 +288,11 @@ void GMM::calcInverseCovAndDeterm(int ci)
 
 /**
  * Returns the number of edges in a graph of the image with
- * the given connectivity.
+ * the given neighbors / connectivity.
  */
-static inline double countEdges(const Mat &img, int connectivity)
+static inline double countEdges(const Mat &img, int neighbors)
 {
-    if (connectivity == GC_N4) {
+    if (neighbors == GC_N4) {
         return   2 * img.cols * img.rows // each pixel has 2 neighbors (left, up)
                - img.cols                // the first colum has no left 
                - img.rows                // the first row has no up
@@ -311,7 +311,7 @@ static inline double countEdges(const Mat &img, int connectivity)
  *
  * beta = 1 / (2 * avg(sqr(||color[i] - color[j]||)))
  */
-static double calcBeta(const Mat &img, int connectivity)
+static double calcBeta(const Mat &img, int neighbors)
 {
     double beta = 0;
     for (int y = 0; y < img.rows; y++) {
@@ -323,7 +323,7 @@ static double calcBeta(const Mat &img, int connectivity)
                 beta += diff.dot(diff);
             }
             // upleft
-            if (connectivity == GC_N8 && y > 0 && x > 0) {
+            if (neighbors == GC_N8 && y > 0 && x > 0) {
                 Vec3d diff = color - (Vec3d) img.at<Vec3b>(y - 1, x - 1);
                 beta += diff.dot(diff);
             }
@@ -333,7 +333,7 @@ static double calcBeta(const Mat &img, int connectivity)
                 beta += diff.dot(diff);
             }
             // upright
-            if (connectivity == GC_N8 && y > 0 && x < img.cols - 1) {
+            if (neighbors == GC_N8 && y > 0 && x < img.cols - 1) {
                 Vec3d diff = color - (Vec3d) img.at<Vec3b>(y - 1, x + 1);
                 beta += diff.dot(diff);
             }
@@ -342,7 +342,7 @@ static double calcBeta(const Mat &img, int connectivity)
     if (beta <= std::numeric_limits<double>::epsilon()) {
         return 0;
     } else {
-        return 1.f / (2 * beta / countEdges(img, connectivity));
+        return 1.f / (2 * beta / countEdges(img, neighbors));
     }
 }
 
@@ -352,7 +352,7 @@ static double calcBeta(const Mat &img, int connectivity)
  *
  * beta = 2 / (avg(||color[i] - color[j]||))
  */
-static double calcExtendedBeta(const Mat &img, int connectivity)
+static double calcExtendedBeta(const Mat &img, int neighbors)
 {
     double beta = 0;
 
@@ -364,7 +364,7 @@ static double calcExtendedBeta(const Mat &img, int connectivity)
                 beta += norm(color - (Vec3d) img.at<Vec3b>(y, x - 1));
             }
             // upleft
-            if (connectivity == GC_N8 && y > 0 && x > 0) {
+            if (neighbors == GC_N8 && y > 0 && x > 0) {
                 beta += norm(color - (Vec3d) img.at<Vec3b>(y - 1, x - 1));
             }
             // up
@@ -372,7 +372,7 @@ static double calcExtendedBeta(const Mat &img, int connectivity)
                 beta += norm(color - (Vec3d) img.at<Vec3b>(y - 1, x));
             }
             // upright
-            if (connectivity == GC_N8 && y > 0 && x < img.cols - 1) {
+            if (neighbors == GC_N8 && y > 0 && x < img.cols - 1) {
                 beta += norm(color - (Vec3d) img.at<Vec3b>(y - 1, x + 1));
             }
         }
@@ -381,23 +381,23 @@ static double calcExtendedBeta(const Mat &img, int connectivity)
         return 0;
     }
 
-    return 2.f / (beta / countEdges(img, connectivity));
+    return 2.f / (beta / countEdges(img, neighbors));
 }
 
 static void calcExtendedNWeights(const Mat &img, Mat &leftW, Mat &upleftW, Mat &upW, Mat &uprightW,
-                                 double beta, double gamma, int connectivity)
+                                 double beta, double gamma, int neighbors)
 {
     CV_Error(CV_StsNotImplemented,"not implemented yet");
 }
 
 /**
  * Calculate weights of noterminal vertices of graph.
- * N means the connectivity of the graph.
+ * N means the neighbors of the graph.
  * 
  * beta and gamma - parameters of GrabCut algorithm.
  */
 static void calcNWeights(const Mat &img, Mat &leftW, Mat &upleftW, Mat &upW, Mat &uprightW,
-                         double beta, double gamma, int connectivity)
+                         double beta, double gamma, int neighbors)
 {
     const double gammaDivSqrt2 = gamma / std::sqrt(2.0f);
 
@@ -418,7 +418,7 @@ static void calcNWeights(const Mat &img, Mat &leftW, Mat &upleftW, Mat &upW, Mat
                 leftW.at<double>(y, x) = 0;
             }
             // upleft
-            if (connectivity == GC_N8 && x - 1 >= 0 && y - 1 >= 0) {
+            if (neighbors == GC_N8 && x - 1 >= 0 && y - 1 >= 0) {
                 Vec3d diff = color - (Vec3d) img.at<Vec3b>(y - 1, x - 1);
                 upleftW.at<double>(y, x) = gammaDivSqrt2 * exp(-beta * diff.dot(diff));
             } else {
@@ -432,7 +432,7 @@ static void calcNWeights(const Mat &img, Mat &leftW, Mat &upleftW, Mat &upW, Mat
                 upW.at<double>(y, x) = 0;
             }
             // upright
-            if (connectivity == GC_N8 && x + 1 < img.cols && y - 1 >= 0) {
+            if (neighbors == GC_N8 && x + 1 < img.cols && y - 1 >= 0) {
                 Vec3d diff = color - (Vec3d) img.at<Vec3b>(y - 1, x + 1);
                 uprightW.at<double>(y, x) = gammaDivSqrt2 * exp(-beta * diff.dot(diff));
             } else {
@@ -618,7 +618,7 @@ static void learnGMMs(const Mat &img, const Mat &mask, const Mat &compIdxs, GMM 
  *                  to the source/sink
  */
 static void constructGCGraph(const Mat &img, const Mat &mask, const GMM &bgdGMM, const GMM &fgdGMM,
-                             double lambda, int connectivity,
+                             double lambda, int neighbors,
                              const Mat &leftW, const Mat &upleftW, const Mat &upW, const Mat &uprightW,
                              GCGraph<double> &graph)
 {
@@ -663,7 +663,7 @@ static void constructGCGraph(const Mat &img, const Mat &mask, const GMM &bgdGMM,
                 double w = leftW.at<double>(p);
                 graph.addEdges(vtxIdx, vtxIdx - 1, w, w);
             }
-            if (connectivity == GC_N8 && p.x > 0 && p.y > 0) {
+            if (neighbors == GC_N8 && p.x > 0 && p.y > 0) {
                 double w = upleftW.at<double>(p);
                 graph.addEdges(vtxIdx, vtxIdx - img.cols - 1, w, w);
             }
@@ -671,7 +671,7 @@ static void constructGCGraph(const Mat &img, const Mat &mask, const GMM &bgdGMM,
                 double w = upW.at<double>(p);
                 graph.addEdges(vtxIdx, vtxIdx - img.cols, w, w);
             }
-            if (connectivity == GC_N8 && p.x < img.cols - 1 && p.y > 0) {
+            if (neighbors == GC_N8 && p.x < img.cols - 1 && p.y > 0) {
                 double w = uprightW.at<double>(p);
                 graph.addEdges(vtxIdx, vtxIdx - img.cols + 1, w, w);
             }
@@ -702,7 +702,7 @@ static void estimateSegmentation(GCGraph<double> &graph, Mat &mask)
 void cv::grabCut(InputArray _img, InputOutputArray _mask, Rect rect,
                  InputOutputArray _bgdModel, InputOutputArray _fgdModel,
                  int iterCount, double tolerance, bool extended,
-                 int connectivity, int mode)
+                 int neighbors, int mode)
 {
     Mat img = _img.getMat();
     Mat &mask = _mask.getMatRef();
@@ -743,11 +743,11 @@ void cv::grabCut(InputArray _img, InputOutputArray _mask, Rect rect,
     Mat leftW, upleftW, upW, uprightW;
     
     if (extended) {
-        const double beta = calcExtendedBeta(img, connectivity);
-        calcExtendedNWeights(img, leftW, upleftW, upW, uprightW, beta, gamma, connectivity);
+        const double beta = calcExtendedBeta(img, neighbors);
+        calcExtendedNWeights(img, leftW, upleftW, upW, uprightW, beta, gamma, neighbors);
     } else {
-        const double beta = calcBeta(img, connectivity);
-        calcNWeights(img, leftW, upleftW, upW, uprightW, beta, gamma, connectivity);
+        const double beta = calcBeta(img, neighbors);
+        calcNWeights(img, leftW, upleftW, upW, uprightW, beta, gamma, neighbors);
     }
 
 
@@ -755,7 +755,7 @@ void cv::grabCut(InputArray _img, InputOutputArray _mask, Rect rect,
         GCGraph<double> graph;
         assignGMMsComponents(img, mask, bgdGMM, fgdGMM, compIdxs);
         learnGMMs(img, mask, compIdxs, bgdGMM, fgdGMM);
-        constructGCGraph(img, mask, bgdGMM, fgdGMM, lambda, connectivity,
+        constructGCGraph(img, mask, bgdGMM, fgdGMM, lambda, neighbors,
                          leftW, upleftW, upW, uprightW, graph);
         estimateSegmentation(graph, mask);
     }

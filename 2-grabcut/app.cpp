@@ -11,9 +11,9 @@ using namespace cv;
 
 // command line option list
 static const struct option long_options[] = {
-    { "help",           no_argument,       0, 'h' },
-    { "extended",       no_argument,       0, 'e' },
-    { "connectivity",   required_argument, 0, 'c' },
+    { "help",       no_argument,       0, 'h' },
+    { "extended",   no_argument,       0, 'e' },
+    { "neighbors",  required_argument, 0, 'n' },
     0 // end of parameter list
 };
 
@@ -27,7 +27,7 @@ static void usage()
             "    -h, --help            Show this help message\n"
             "    -e, --extended        Use an extended pairwise (aka. binary or smoothing) term\n"
             "                          Default: false\n"
-            "    -c, --connectivity    Neighborhood system that should be used.\n"
+            "    -n, --neighbors       Neighborhood system that should be used.\n"
             "                          Default: 8\n\n"; 
 }
 
@@ -51,7 +51,7 @@ static bool parsePositionalImage(Mat& image, const int channels, const string& n
     return true;
 }
 
-static void help()
+static void hotkeyHelp()
 {
     cout << "\nSelect a rectangular area around the object you want to segment\n" <<
             "\nHot keys: \n"
@@ -69,11 +69,11 @@ static void help()
 }
 
 // color definitions
-const Scalar RED = Scalar(0, 0, 255);
-const Scalar PINK = Scalar(230, 130, 255);
-const Scalar BLUE = Scalar(255, 0, 0);
+const Scalar RED       = Scalar(  0,   0, 255);
+const Scalar PINK      = Scalar(230, 130, 255);
+const Scalar BLUE      = Scalar(255,   0,   0);
 const Scalar LIGHTBLUE = Scalar(255, 255, 160);
-const Scalar GREEN = Scalar(0, 255, 0);
+const Scalar GREEN     = Scalar(  0, 255,   0);
 
 const int BGD_KEY = CV_EVENT_FLAG_CTRLKEY;
 const int FGD_KEY = CV_EVENT_FLAG_SHIFTKEY;
@@ -107,12 +107,12 @@ class GCApplication
     static const int thickness = -1;
 
     GCApplication(double tolerance = MAX_TOLERANCE, double distance = 1, double contrast = 1,
-                  bool extended = false, int connectivity = GC_N8) :
+                  bool extended = false, int neighbors = GC_N8) :
         tolerance(tolerance),
         distance(distance),
         contrast(contrast),
         extended(extended),
-        connectivity(connectivity),
+        neighbors(neighbors),
         image(nullptr),
         winName(nullptr)
     {}
@@ -168,7 +168,7 @@ class GCApplication
     double distance;
     double contrast;
     bool extended;
-    int connectivity;
+    int neighbors;
 };
 
 void GCApplication::reset()
@@ -348,7 +348,7 @@ int GCApplication::nextIter()
 {
     if (isInitialized) {
         grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1,
-                tolerance, extended, connectivity);
+                tolerance, extended, neighbors);
     } else {
         // if the application not initialized and the rectangular is not set up be the user
         // we do nothing
@@ -361,10 +361,10 @@ int GCApplication::nextIter()
         // if the user provides brush strokes, use them as mask for the initial iteration
         if (labelsState == SET || probablyLabelsState == SET) {
             grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1,
-                    tolerance, extended, connectivity, GC_INIT_WITH_MASK);
+                    tolerance, extended, neighbors, GC_INIT_WITH_MASK);
         } else {
             grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1,
-                    tolerance, extended, connectivity, GC_INIT_WITH_RECT);
+                    tolerance, extended, neighbors, GC_INIT_WITH_RECT);
         }
         // after the initial iteration, the application is initialized
         isInitialized = true;
@@ -391,7 +391,7 @@ ostream& operator<< (ostream& stream, const GCApplication& gcapp)
 {
     return stream << "GCApplication \"" << gcapp.winName << "\"\n"
                      "    extended binary:  " << (gcapp.extended ? "true" : "false") << "\n"
-                     "    connectivity:     " << gcapp.connectivity << "\n"
+                     "    neighbors:     " << gcapp.neighbors << "\n"
                      "    tolerance:        " << gcapp.tolerance << "\n"
                      "    distance:         " << gcapp.distance << "\n"
                      "    contrast:         " << gcapp.contrast << "\n";
@@ -426,7 +426,7 @@ int main(int argc, const char **argv)
     Mat image;
 
     // command line parameters
-    int connectivity = GC_N8;
+    int neighbors = GC_N8;
     bool extended = false;
 
     // trackbar parameters
@@ -437,7 +437,7 @@ int main(int argc, const char **argv)
     // parse command line options
     while (true) {
         int index = -1;
-        int result = getopt_long(argc, (char **) argv, "hec:", long_options, &index);
+        int result = getopt_long(argc, (char **) argv, "hen:", long_options, &index);
 
         // end of parameter list
         if (result == -1) {
@@ -453,14 +453,14 @@ int main(int argc, const char **argv)
                 extended = true;
                 break;
 
-            case 'c': {
-                int c = stoi(string(optarg));
-                if (c == 4) {
-                    connectivity = GC_N4;
-                } else if (c == 8) {
-                    connectivity = GC_N8;
+            case 'n': {
+                int n = stoi(string(optarg));
+                if (n == 4) {
+                    neighbors = GC_N4;
+                } else if (n == 8) {
+                    neighbors = GC_N8;
                 } else {
-                    cerr << argv[0] << ": Invalid connectivity " << optarg << ". Only 4 and 8 are supported" << endl;
+                    cerr << argv[0] << ": Invalid neighborshood " << optarg << ". Only 4 and 8 are supported" << endl;
                     return 1;
                 }
                 break;
@@ -483,7 +483,7 @@ int main(int argc, const char **argv)
                         trackbarToDistance(distanceSlider),
                         trackbarToContrast(contrastSlider),
                         extended,
-                        connectivity);
+                        neighbors);
 
     const string winName = "image";
     namedWindow(winName, WINDOW_AUTOSIZE);
@@ -497,7 +497,7 @@ int main(int argc, const char **argv)
     gcapp.setImageAndWinName(image, winName);
 
     cout << gcapp << endl;
-    help();
+    hotkeyHelp();
 
     gcapp.showImage();
 

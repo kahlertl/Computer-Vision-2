@@ -355,8 +355,8 @@ void GCApplication::mouseClick(int event, int x, int y, int flags)
 int GCApplication::nextIter()
 {
     if (isInitialized) {
-        grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1,
-                tolerance, extended, connectivity, contrast, neighbors);
+        extendedGrabCut(*image, mask, rect, backgroundModel, foregroundModel, 1,
+                        tolerance, extended, connectivity, contrast, neighbors);
     } else {
         // if the application not initialized and the rectangular is not set up be the user
         // we do nothing
@@ -368,11 +368,11 @@ int GCApplication::nextIter()
         //
         // if the user provides brush strokes, use them as mask for the initial iteration
         if (labelsState == SET || probablyLabelsState == SET) {
-            grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1,
-                    tolerance, extended, connectivity, contrast, neighbors, GC_INIT_WITH_MASK);
+            extendedGrabCut(*image, mask, rect, backgroundModel, foregroundModel, 1,
+                            tolerance, extended, connectivity, contrast, neighbors, GC_INIT_WITH_MASK);
         } else {
-            grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1,
-                    tolerance, extended, connectivity, contrast, neighbors, GC_INIT_WITH_RECT);
+            extendedGrabCut(*image, mask, rect, backgroundModel, foregroundModel, 1,
+                            tolerance, extended, connectivity, contrast, neighbors, GC_INIT_WITH_RECT);
         }
         // after the initial iteration, the application is initialized
         isInitialized = true;

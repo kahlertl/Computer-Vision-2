@@ -34,11 +34,11 @@ enum
  * @param neighbors     Change the modeled connectivity of the graph used for the
  *                      min-cut calculation
  */
-void grabCut(InputArray _img, InputOutputArray _mask, Rect rect,
-             InputOutputArray _bgdModel, InputOutputArray _fgdModel,
-             int iterCount, double tolerance = 1, bool extended = false,
-             double connectivity = 1, double contrast = 1,
-             int neighbors = GC_N8, int mode = GC_EVAL);
+void extendedGrabCut(InputArray _img, InputOutputArray _mask, Rect rect,
+                     InputOutputArray _bgdModel, InputOutputArray _fgdModel,
+                     int iterCount, double tolerance = 1, bool extended = false,
+                     double connectivity = 1, double contrast = 1,
+                     int neighbors = GC_N8, int mode = GC_EVAL);
 
 }
 

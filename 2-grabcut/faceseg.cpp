@@ -154,8 +154,8 @@ void segmentFace(const Mat& image, Mat& mask, Mat& canvas, Rect& face, vector<Re
     }
 
     cerr << "Perform GrabCut ... ";
-    grabCut(image, mask, face, backgroundModel, foregroundModel, iterations,
-            tolerance, extended, connectivity, contrast, neighbors, GC_INIT_WITH_MASK);
+    extendedGrabCut(image, mask, face, backgroundModel, foregroundModel, iterations,
+                    tolerance, extended, connectivity, contrast, neighbors, GC_INIT_WITH_MASK);
     cerr << "Done" << endl;
 
 }

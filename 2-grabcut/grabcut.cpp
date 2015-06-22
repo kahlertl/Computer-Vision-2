@@ -347,6 +347,50 @@ static double calcBeta(const Mat &img, int connectivity)
 }
 
 /**
+ * Calculate beta for the extended pairwise / binary / smoothing term 
+ * as parameter of GrabCut algorithm.
+ *
+ * beta = 2 / (avg(||color[i] - color[j]||))
+ */
+static double calcExtendedBeta(const Mat &img, int connectivity)
+{
+    double beta = 0;
+
+    for (int y = 0; y < img.rows; y++) {
+        for (int x = 0; x < img.cols; x++) {
+            Vec3d color = img.at<Vec3b>(y, x);
+            // left
+            if (x > 0) {
+                beta += norm(color - (Vec3d) img.at<Vec3b>(y, x - 1));
+            }
+            // upleft
+            if (connectivity == GC_N8 && y > 0 && x > 0) {
+                beta += norm(color - (Vec3d) img.at<Vec3b>(y - 1, x - 1));
+            }
+            // up
+            if (y > 0) {
+                beta += norm(color - (Vec3d) img.at<Vec3b>(y - 1, x));
+            }
+            // upright
+            if (connectivity == GC_N8 && y > 0 && x < img.cols - 1) {
+                beta += norm(color - (Vec3d) img.at<Vec3b>(y - 1, x + 1));
+            }
+        }
+    }
+    if (beta <= std::numeric_limits<double>::epsilon()) {
+        return 0;
+    }
+
+    return 2.f / (beta / countEdges(img, connectivity));
+}
+
+static void calcExtendedNWeights(const Mat &img, Mat &leftW, Mat &upleftW, Mat &upW, Mat &uprightW,
+                                 double beta, double gamma, int connectivity)
+{
+    CV_Error(CV_StsNotImplemented,"not implemented yet");
+}
+
+/**
  * Calculate weights of noterminal vertices of graph.
  * N means the connectivity of the graph.
  * 
@@ -657,7 +701,8 @@ static void estimateSegmentation(GCGraph<double> &graph, Mat &mask)
 
 void cv::grabCut(InputArray _img, InputOutputArray _mask, Rect rect,
                  InputOutputArray _bgdModel, InputOutputArray _fgdModel,
-                 int iterCount, double tolerance, int connectivity, int mode)
+                 int iterCount, double tolerance, bool extended,
+                 int connectivity, int mode)
 {
     Mat img = _img.getMat();
     Mat &mask = _mask.getMatRef();
@@ -694,10 +739,17 @@ void cv::grabCut(InputArray _img, InputOutputArray _mask, Rect rect,
 
     const double gamma = 50;
     const double lambda = 9 * gamma;
-    const double beta = calcBeta(img, connectivity);
 
     Mat leftW, upleftW, upW, uprightW;
-    calcNWeights(img, leftW, upleftW, upW, uprightW, beta, gamma, connectivity);
+    
+    if (extended) {
+        const double beta = calcExtendedBeta(img, connectivity);
+        calcExtendedNWeights(img, leftW, upleftW, upW, uprightW, beta, gamma, connectivity);
+    } else {
+        const double beta = calcBeta(img, connectivity);
+        calcNWeights(img, leftW, upleftW, upW, uprightW, beta, gamma, connectivity);
+    }
+
 
     for (int i = 0; i < iterCount; i++) {
         GCGraph<double> graph;

@@ -22,13 +22,16 @@ enum
  * @param tolerance     Take only this portion pixels in the rectangular for the
  *                      calculation of the foreground distribution that are most
  *                      unlikely in the background distribution.
+ *                      
+ * @param extended      Use an extended term for the pairwise / binary / smoothing
+ *                      term
  * 
  * @param connectivity  Change the modeled connectivity of the graph used for the
  *                      min-cut calculation
  */
 void grabCut(InputArray _img, InputOutputArray _mask, Rect rect,
              InputOutputArray _bgdModel, InputOutputArray _fgdModel,
-             int iterCount, double tolerance = 1,
+             int iterCount, double tolerance = 1, bool extended = false,
              int connectivity = GC_N8, int mode = GC_EVAL);
 
 }

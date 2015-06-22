@@ -12,6 +12,7 @@ using namespace cv;
 // command line option list
 static const struct option long_options[] = {
     { "help",           no_argument,       0, 'h' },
+    { "extended",       no_argument,       0, 'e' },
     { "connectivity",   required_argument, 0, 'c' },
     0 // end of parameter list
 };
@@ -24,6 +25,8 @@ static void usage()
             "\n"
             "  options:\n"
             "    -h, --help            Show this help message\n"
+            "    -e, --extended        Use an extended pairwise (aka. binary or smoothing) term\n"
+            "                          Default: false\n"
             "    -c, --connectivity    Neighborhood system that should be used.\n"
             "                          Default: 8\n\n"; 
 }
@@ -104,10 +107,11 @@ class GCApplication
     static const int thickness = -1;
 
     GCApplication(double tolerance = MAX_TOLERANCE, double distance = 1, double contrast = 1,
-                  int connectivity = GC_N8) :
+                  bool extended = false, int connectivity = GC_N8) :
         tolerance(tolerance),
         distance(distance),
         contrast(contrast),
+        extended(extended),
         connectivity(connectivity),
         image(nullptr),
         winName(nullptr)
@@ -162,6 +166,7 @@ class GCApplication
     double tolerance;
     double distance;
     double contrast;
+    bool extended;
     int connectivity;
 };
 
@@ -341,7 +346,8 @@ void GCApplication::mouseClick(int event, int x, int y, int flags)
 int GCApplication::nextIter()
 {
     if (isInitialized) {
-        grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1, tolerance, connectivity);
+        grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1,
+                tolerance, extended, connectivity);
     } else {
         // if the application not initialized and the rectangular is not set up be the user
         // we do nothing
@@ -353,9 +359,11 @@ int GCApplication::nextIter()
         //
         // if the user provides brush strokes, use them as mask for the initial iteration
         if (labelsState == SET || probablyLabelsState == SET) {
-            grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1, tolerance, connectivity, GC_INIT_WITH_MASK);
+            grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1,
+                    tolerance, extended, connectivity, GC_INIT_WITH_MASK);
         } else {
-            grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1, tolerance, connectivity, GC_INIT_WITH_RECT);
+            grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1,
+                    tolerance, extended, connectivity, GC_INIT_WITH_RECT);
         }
         // after the initial iteration, the application is initialized
         isInitialized = true;
@@ -405,7 +413,12 @@ static void onDistanceTrackbar(int value, void* gcapp)
 int main(int argc, const char **argv)
 {
     Mat image;
+
+    // command line parameters
     int connectivity = GC_N8;
+    bool extended = false;
+
+    // trackbar parameters
     int toleranceSlider = 50;
     int distanceSlider  = 100;
     int contrastSlider  = 100;
@@ -413,7 +426,7 @@ int main(int argc, const char **argv)
     // parse command line options
     while (true) {
         int index = -1;
-        int result = getopt_long(argc, (char **) argv, "hc:", long_options, &index);
+        int result = getopt_long(argc, (char **) argv, "hec:", long_options, &index);
 
         // end of parameter list
         if (result == -1) {
@@ -424,6 +437,10 @@ int main(int argc, const char **argv)
             case 'h':
                 usage();
                 return 0;
+
+            case 'e':
+                extended = true;
+                break;
 
             case 'c': {
                 int c = stoi(string(optarg));

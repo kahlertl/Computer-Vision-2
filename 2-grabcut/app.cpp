@@ -19,16 +19,18 @@ static const struct option long_options[] = {
 
 static void usage()
 {
-    cout << "Usage: grabcut [options] image\n\n"
-            "This program demonstrates GrabCut segmentation.\n"
-            "Select an object in a region and then grabcut will attempt to segment it out.\n"
-            "\n"
-            "  options:\n"
-            "    -h, --help            Show this help message\n"
-            "    -e, --extended        Use an extended pairwise (aka. binary or smoothing) term\n"
-            "                          Default: false\n"
-            "    -n, --neighbors       Neighborhood system that should be used.\n"
-            "                          Default: 8\n\n"; 
+    cout << "Usage: grabcut [options] image" << endl
+         << endl
+         << "This program demonstrates GrabCut segmentation." << endl
+         << "Select an object in a region and then grabcut will attempt to segment it out." << endl
+         << endl
+         << "  options:" << endl
+         << "    -h, --help            Show this help message" << endl
+         << "    -e, --extended        Use an extended pairwise (aka. binary or smoothing) term" << endl
+         << "                          Default: false" << endl
+         << "    -n, --neighbors       Neighborhood system that should be used." << endl
+         << "                          Default: 8" << endl
+         << endl;
 }
 
 static bool parsePositionalImage(Mat& image, const int channels, const string& name, int argc, char const *argv[])
@@ -53,19 +55,22 @@ static bool parsePositionalImage(Mat& image, const int channels, const string& n
 
 static void hotkeyHelp()
 {
-    cout << "\nSelect a rectangular area around the object you want to segment\n" <<
-            "\nHot keys: \n"
-            "    ESC - quit the program\n"
-            "    r   - restore the original image\n"
-            "    n   - next iteration\n"
-            "\n"
-            "    left mouse button - set rectangle\n"
-            "\n"
-            "    CTRL +left mouse button - set GC_BGD pixels\n"
-            "    SHIFT+left mouse button - set CG_FGD pixels\n"
-            "\n"
-            "    CTRL +right mouse button - set GC_PR_BGD pixels\n"
-            "    SHIFT+right mouse button - set CG_PR_FGD pixels\n\n";
+    cout << endl
+         << "Select a rectangular area around the object you want to segment" << endl
+         << endl
+         << "Hot keys: " << endl
+         << "    ESC - quit the program" << endl
+         << "    r   - restore the original image" << endl
+         << "    n   - next iteration" << endl
+         << endl
+         << "    left mouse button - set rectangle" << endl
+         << endl
+         << "    CTRL +left mouse button - set GC_BGD pixels" << endl
+         << "    SHIFT+left mouse button - set CG_FGD pixels" << endl
+         << endl
+         << "    CTRL +right mouse button - set GC_PR_BGD pixels" << endl
+         << "    SHIFT+right mouse button - set CG_PR_FGD pixels" << endl
+         << endl;
 }
 
 // color definitions
@@ -389,12 +394,12 @@ void GCApplication::resetIter()
 
 ostream& operator<< (ostream& stream, const GCApplication& gcapp)
 {
-    return stream << "GCApplication \"" << gcapp.winName << "\"\n"
-                     "    extended binary:  " << (gcapp.extended ? "true" : "false") << "\n"
-                     "    neighbors:     " << gcapp.neighbors << "\n"
-                     "    tolerance:        " << gcapp.tolerance << "\n"
-                     "    distance:         " << gcapp.distance << "\n"
-                     "    contrast:         " << gcapp.contrast << "\n";
+    return stream << "GCApplication \"" << gcapp.winName << "\"" << endl
+                  << "    extended binary:  " << (gcapp.extended ? "true" : "false") << endl
+                  << "    neighbors:        " << gcapp.neighbors << endl
+                  << "    tolerance:        " << gcapp.tolerance << endl
+                  << "    distance:         " << gcapp.distance  << endl
+                  << "    contrast:         " << gcapp.contrast  << endl;
 }
 
 static inline double trackbarToTolerance(int value) { return (double)  value / (double) MAX_TOLERANCE; }
@@ -460,7 +465,8 @@ int main(int argc, const char **argv)
                 } else if (n == 8) {
                     neighbors = GC_N8;
                 } else {
-                    cerr << argv[0] << ": Invalid neighborshood " << optarg << ". Only 4 and 8 are supported" << endl;
+                    cerr << argv[0] << ": Invalid neighborshood " << optarg
+                         << ". Got to town, only 4 and 8 are supported. Implement it yourself!" << endl;
                     return 1;
                 }
                 break;

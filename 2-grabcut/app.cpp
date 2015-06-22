@@ -83,9 +83,9 @@ const Scalar GREEN     = Scalar(  0, 255,   0);
 const int BGD_KEY = CV_EVENT_FLAG_CTRLKEY;
 const int FGD_KEY = CV_EVENT_FLAG_SHIFTKEY;
 
-const int MAX_TOLERANCE = 100;
-const int MAX_DISTANCE  = 1000;
-const int MAX_CONTRAST  = 1000;
+const int MAX_TOLERANCE     =  100;
+const int MAX_CONNECTIVITY  = 1000;
+const int MAX_CONTRAST      = 1000;
 
 static void getBinMask(const Mat &comMask, Mat &binMask)
 {
@@ -111,10 +111,10 @@ class GCApplication
     static const int radius = 2;
     static const int thickness = -1;
 
-    GCApplication(double tolerance = MAX_TOLERANCE, double distance = 1, double contrast = 1,
+    GCApplication(double tolerance = MAX_TOLERANCE, double connectivity = 1, double contrast = 1,
                   bool extended = false, int neighbors = GC_N8) :
         tolerance(tolerance),
-        distance(distance),
+        connectivity(connectivity),
         contrast(contrast),
         extended(extended),
         neighbors(neighbors),
@@ -137,9 +137,9 @@ class GCApplication
      * in an uninitiazed state with, but the rectangular and brush strokes
      * are kept.
      */
-    inline void setTolerance(double _tolerance) { tolerance = _tolerance; resetIter(); }
-    inline void setContrast(double _contrast)   { contrast  = _contrast;  resetIter(); }
-    inline void setDistance(double _distance)   { distance  = _distance;  resetIter(); }
+    inline void setTolerance(double _tolerance)      { tolerance = _tolerance;        resetIter(); }
+    inline void setContrast(double _contrast)        { contrast  = _contrast;         resetIter(); }
+    inline void setConnectivity(double connectivity) { connectivity  = connectivity;  resetIter(); }
 
     inline int getIterCount() const { return iterCount; }
 
@@ -169,11 +169,14 @@ class GCApplication
     vector<Point> foregroundPixels, backgroundPixels, probablyForegroundPixels, probablyBackgroundPixels;
     int iterCount;
 
-    double tolerance;
-    double distance;
-    double contrast;
-    bool extended;
-    int neighbors;
+    double tolerance;       // Defines the proportion of pixels inside the rectangular that
+                            // are most unlikly in the background distribution and should be used
+                            // for the foreground distribution
+    double connectivity;    // standard Ising prior, which are the constant costs for the
+                            // pairwise / binary / smoothing term (delta function with proportinal factor)
+    double contrast;        // boost cutting of edges in hight contrast reagions
+    bool extended;          // use an extended term of the pairwise term
+    int neighbors;          // numer of connected neighbor pixels (aka. graph connectivity)
 };
 
 void GCApplication::reset()
@@ -353,7 +356,7 @@ int GCApplication::nextIter()
 {
     if (isInitialized) {
         grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1,
-                tolerance, extended, neighbors);
+                tolerance, extended, connectivity, contrast, neighbors);
     } else {
         // if the application not initialized and the rectangular is not set up be the user
         // we do nothing
@@ -366,10 +369,10 @@ int GCApplication::nextIter()
         // if the user provides brush strokes, use them as mask for the initial iteration
         if (labelsState == SET || probablyLabelsState == SET) {
             grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1,
-                    tolerance, extended, neighbors, GC_INIT_WITH_MASK);
+                    tolerance, extended, connectivity, contrast, neighbors, GC_INIT_WITH_MASK);
         } else {
             grabCut(*image, mask, rect, backgroundModel, foregroundModel, 1,
-                    tolerance, extended, neighbors, GC_INIT_WITH_RECT);
+                    tolerance, extended, connectivity, contrast, neighbors, GC_INIT_WITH_RECT);
         }
         // after the initial iteration, the application is initialized
         isInitialized = true;
@@ -398,13 +401,13 @@ ostream& operator<< (ostream& stream, const GCApplication& gcapp)
                   << "    extended binary:  " << (gcapp.extended ? "true" : "false") << endl
                   << "    neighbors:        " << gcapp.neighbors << endl
                   << "    tolerance:        " << gcapp.tolerance << endl
-                  << "    distance:         " << gcapp.distance  << endl
+                  << "    connectivity:     " << gcapp.connectivity  << endl
                   << "    contrast:         " << gcapp.contrast  << endl;
 }
 
-static inline double trackbarToTolerance(int value) { return (double)  value / (double) MAX_TOLERANCE; }
-static inline double trackbarToContrast(int value)  { return (double)  value / (double) MAX_CONTRAST;  }
-static inline double trackbarToDistance(int value)  { return (double)  value / (double) MAX_DISTANCE;  }
+static inline double trackbarToTolerance(int value)    { return (double)  value / (double) MAX_TOLERANCE; }
+static inline double trackbarToContrast(int value)     { return (double)  value / (double) MAX_CONTRAST;  }
+static inline double trackbarToConnectivity(int value) { return (double)  value / (double) MAX_CONNECTIVITY;  }
 
 static void onMouse(int event, int x, int y, int flags, void* gcapp)
 {
@@ -421,9 +424,9 @@ static void onContrastTrackbar(int value, void* gcapp)
     ((GCApplication*) gcapp)->setContrast((value));
 }
 
-static void onDistanceTrackbar(int value, void* gcapp)
+static void onConnectivityTrackbar(int value, void* gcapp)
 {
-    ((GCApplication*) gcapp)->setDistance((value));
+    ((GCApplication*) gcapp)->setConnectivity((value));
 }
 
 int main(int argc, const char **argv)
@@ -436,7 +439,7 @@ int main(int argc, const char **argv)
 
     // trackbar parameters
     int toleranceSlider = 50;
-    int distanceSlider  = 100;
+    int connectivitySlider  = 100;
     int contrastSlider  = 100;
 
     // parse command line options
@@ -486,7 +489,7 @@ int main(int argc, const char **argv)
 
     // use the inital value of the slider for the app initialziation
     GCApplication gcapp(trackbarToTolerance(toleranceSlider),
-                        trackbarToDistance(distanceSlider),
+                        trackbarToConnectivity(connectivitySlider),
                         trackbarToContrast(contrastSlider),
                         extended,
                         neighbors);
@@ -496,9 +499,9 @@ int main(int argc, const char **argv)
 
     setMouseCallback(winName, onMouse, &gcapp);
 
-    createTrackbar("tolerance", winName, &toleranceSlider, MAX_TOLERANCE, onToleranceTrackbar, &gcapp);
-    createTrackbar("distance",  winName, &distanceSlider,  MAX_DISTANCE,  onDistanceTrackbar,  &gcapp);
-    createTrackbar("constrast", winName, &contrastSlider,  MAX_CONTRAST,  onContrastTrackbar,  &gcapp);
+    createTrackbar("tolerance",    winName, &toleranceSlider,    MAX_TOLERANCE,    onToleranceTrackbar,    &gcapp);
+    createTrackbar("connectivity", winName, &connectivitySlider, MAX_CONNECTIVITY, onConnectivityTrackbar, &gcapp);
+    createTrackbar("constrast",    winName, &contrastSlider,     MAX_CONTRAST,     onContrastTrackbar,     &gcapp);
 
     gcapp.setImageAndWinName(image, winName);
 

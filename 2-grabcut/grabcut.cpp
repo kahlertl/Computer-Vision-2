@@ -702,6 +702,7 @@ static void estimateSegmentation(GCGraph<double> &graph, Mat &mask)
 void cv::grabCut(InputArray _img, InputOutputArray _mask, Rect rect,
                  InputOutputArray _bgdModel, InputOutputArray _fgdModel,
                  int iterCount, double tolerance, bool extended,
+                 double connectivity, double contrast,
                  int neighbors, int mode)
 {
     Mat img = _img.getMat();

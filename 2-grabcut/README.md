@@ -22,7 +22,7 @@ Understand it from debugging, the lectures and the [paper](http://wwwpub.zih.tu-
  - [4 faces](http://cvlab-dresden.de/wp-content/uploads/2015/06/face1-4.png)
 
 
-## 2. Modifing GrubCut
+## 2 Extending GrubCut
 
 Change the code (by grabbing the relevant source from opencv):
 
@@ -38,17 +38,17 @@ of that pixels shall be a slider parameter.
 
 ```latex
 E : {0, 1}^n \in R
-E(x) = ∑ θ i ( x i , z i ) + i ∑ i , j ∈ N θ i , j ( x i , x j , z i , z j )
+E(x) = \sum_{\theta_i} ( x_i , z_i ) + \sum_{i,j \in N} \theta_{i,j} ( x_i , x_j , z_i , z_j )
 ```
 
 where `x` is the unknown segmentation, and `z` the given image. Also, the
 neighbourhood system `N` can be 4- or 8-connected.
 
-`θ_i(x_i , z_i)` is the colour likelihood, computed via Gaussian Mixture models or histograms.
+`\theta_i(x_i , z_i)` is the colour likelihood, computed via Gaussian Mixture models or histograms.
 
 ```latex
-θ_{i,j} (x_i, x_j, z_i, z_j) = |x_i - x_j| [ λ 1 +λ 2 (−exp { −β ||z i −z j ∥ 2 }) ]
-β=2(Mean (∥z i −z j ∥)) −1
+\theta_{i,j} (x_i, x_j, z_i, z_j) = |x_i - x_j| [ \lambda_1 + \lambda_2 (-exp( -\beta || z_i - z_j||_2 )) ]
+\beta = 2 (Mean (\norm(z_i - z_j))^{-1}
 ```
 
 this means `λ_1` represents the standard Ising prior, and `λ_2` the contrast sensitive term.
@@ -62,3 +62,11 @@ and different images:
 
  2. Switch on the contrast (edge) sensitive information `λ_2`. Vary the relative weights of λ 1
     and `λ_2` . What do you see? Does the effect make sense?
+
+
+## 3 Face detection and segmentation (4P)
+
+Use [OpenCV face detection](http://docs.opencv.org/doc/tutorials/objdetect/cascade_classifier/cascade_classifier.html)
+to find a face in an image and extend it with GrabCut to segment the face more precisely. 
+Try to built an optimal system based on your experience from above and possibly additional
+thoughts. Explain your solution. 

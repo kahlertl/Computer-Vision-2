@@ -8,4 +8,5 @@ build:
     - cmake -D CMAKE_BUILD_TYPE=Debug ..
     - make
   tags:
+    - cmake
     - opencv2

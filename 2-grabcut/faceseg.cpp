@@ -216,6 +216,7 @@ int main(int argc, char const *argv[])
     finalMask.setTo(GC_BGD);
 
     cvtColor(image, grayImage, CV_BGR2GRAY);
+    equalizeHist(grayImage, grayImage);
 
     cerr << "Detect faces ... ";
     vector<Rect> faces;

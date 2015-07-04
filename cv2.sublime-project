@@ -2,9 +2,14 @@
 	"folders":
 	[
 		{
-            "name": "Computer Vision 2",
-			"path": ".",
-            "folder_exclude_patterns": ["__pycache__", ".idea", "build"]
+			"folder_exclude_patterns":
+			[
+				"__pycache__",
+				".idea",
+				"build"
+			],
+			"name": "Computer Vision 2",
+			"path": "."
 		}
 	]
 }

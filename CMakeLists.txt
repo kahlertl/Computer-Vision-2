@@ -5,7 +5,8 @@ project(cv2)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
 # we use the OpenCV lib
-# find_package(OpenCV REQUIRED)
+find_package(OpenCV REQUIRED)
+message(STATUS "OpenCV includes ${OpenCV_INCLUDE_DIRS}")
 
 # were does the binaries and libs are delivered?
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

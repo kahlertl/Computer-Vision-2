@@ -9,7 +9,7 @@ build-win:
         -D CMAKE_CXX_COMPILER=mingw32-g++.exe
         -D OpenCV_DIR=%OpenCV_DIR%
         MAKE_MAKE_PROGRAM=mingw32-make.exe ..
-    - mingw32-make.exe
+    - mingw32-make.exe VERBOSE=1
   tags:
     - opencv2
     - windows

@@ -1,7 +1,7 @@
 #include "opencv2/opencv.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/objdetect/objdetect.hpp"
-#include <getopt.h> // getopt_long()
+#include "wingetopt.h" // getopt_long()
 
 #include "grabcut.hpp"
 

@@ -10,12 +10,13 @@ tests are run on an Ubuntu 14.04 LTS.
 
 ## Building on Windows
 
-First, choose a Windows C++ compiler. My choice is [MinGW64](http://mingw-w64.org/doku.php))
-because the normal MinGW has a [bug with C++11](http://stackoverflow.com/q/8542221/2467158).
+First, choose a Windows C++ compiler. I have chosen [MinGW64](http://mingw-w64.org/doku.php))
+because the normal MinGW has a [bug with C++11](http://stackoverflow.com/q/8542221/2467158)
+- and I like software that is up-to-date.
 
 ### Installation of MinGW64
 
-I have got an error with the Windows installer of MinGW64, so I decided to download
+Because I have got an error with the Windows installer of MinGW64, so I decided to download
 the build directly from [SourceForge.net][1].
 
 ### Building OpenCV
@@ -31,7 +32,8 @@ First, download [OpenCV package][2] and run the installer. Open a command line
 mkdir mingw64build
 cd mingw64build
 
-% configure with cmake
+% configure with cmake - this can also be done with CMake-GUI
+% If you have no OpenCL, pass "-D WITH_OPENCL=OFF" as additional definition
 cmake -G "MinGW Makefiles" -D CMAKE_BUILD_TYPE=Release -D CMAKE_CXX_COMPILER=g++  -D CMAKE_C_COMPILER=gcc  ..\sources
 
 % build
@@ -79,5 +81,5 @@ $ make patchmatch
 $ bin/patchmatch ../frame1.png ../frame2.png
 ```
 
-[1] http://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/5.1.0/threads-posix/seh/x86_64-5.1.0-release-posix-seh-rt_v4-rev0.7z/download
-[2] http://sourceforge.net/projects/opencvlibrary/files/opencv-win/
+[1]: http://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/5.1.0/threads-posix/seh/x86_64-5.1.0-release-posix-seh-rt_v4-rev0.7z/download
+[2]: http://sourceforge.net/projects/opencvlibrary/files/opencv-win/

@@ -2,11 +2,10 @@
 # Loads the OpenCV directory from the environmetal variable "OpenCV_DIR"
 build-win:
   script:
-    - SET
     - mkdir build
     - cd build
     - cmake -G "MinGW Makefiles" -D CMAKE_BUILD_TYPE=Debug -D CMAKE_CXX_COMPILER=g++ MAKE_MAKE_PROGRAM=mingw32-make ..
-    - mingw32-make VERBOSE=1
+    - mingw32-make
   tags:
     - opencv2
     - windows

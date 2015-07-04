@@ -1,0 +1,16 @@
+# Special build for Windows
+build-win:
+  script:
+    - mkdir build/
+    - cd build
+    - cmake -G "MinGW Makefiles"
+        -D CMAKE_BUILD_TYPE=Debug
+        -D CMAKE_CXX_COMPILER=mingw32-g++.exe
+        -D WITH_IPP=OFF
+        MAKE_MAKE_PROGRAM=mingw32-make.exe ..
+    - mingw32-make.exe
+  tags:
+    - opencv2
+    - windows
+    - cmake
+    - mingw

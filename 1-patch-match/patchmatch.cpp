@@ -1,9 +1,10 @@
-#include <opencv2/opencv.hpp>
-#include <cstdlib>     // rand
+#include "opencv2/opencv.hpp"
+#include <cstdlib> // rand
 #include <iostream>
-#include <numeric> // numeric_limits
+#include <numeric>
+#include <cassert>
+
 #include "patchmatch.hpp"
-#include "assert.h"
 
 using namespace std;
 using namespace cv;

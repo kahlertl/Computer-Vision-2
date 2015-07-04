@@ -8,6 +8,51 @@ the TU Dresden in summer semester 2015.
 The programs and scripts are written in Python using the OpenCV library. All
 tests are run on an Ubuntu 14.04 LTS.
 
+## Building on Windows
+
+First, choose a Windows C++ compiler. My choice is [MinGW64](http://mingw-w64.org/doku.php))
+because the normal MinGW has a [bug with C++11](http://stackoverflow.com/q/8542221/2467158).
+
+### Installation of MinGW64
+
+I have got an error with the Windows installer of MinGW64, so I decided to download
+the build directly from [SourceForge.net][1].
+
+### Building OpenCV
+
+Because the normal OpenCV Windows distribution does not contain a build for
+MinGW64, we have to build it on our own.
+
+First, download [OpenCV package][2] and run the installer. Open a command line
+(`Win+R` and `cmd`) and navigate to the location where you extracted the OpenCV lib.
+
+```batch
+% create a directory for the new build
+mkdir mingw64build
+cd mingw64build
+
+% configure with cmake
+cmake -G "MinGW Makefiles" -D CMAKE_BUILD_TYPE=Release -D CMAKE_CXX_COMPILER=g++  -D CMAKE_C_COMPILER=gcc  ..\sources
+
+% build
+mingw32-make opencv_modules
+```
+
+After this, you should create a new environmental variable called "OpenCV_DIR"
+which targets the `mingw64build` directory. If you do this, you do not need to
+configure the OpenCV location for each separate project.
+
+### Building tasks
+
+```batch
+% create build directory
+mkdir build
+cd build
+
+% building
+cmake -G "MinGW Makefiles" -D CMAKE_BUILD_TYPE=Debug -D CMAKE_CXX_COMPILER=g++ MAKE_MAKE_PROGRAM=mingw32-make ..
+```
+
 ## Python implementations
 
 ## Requirements
@@ -33,3 +78,6 @@ $ make patchmatch
 # run your binary
 $ bin/patchmatch ../frame1.png ../frame2.png
 ```
+
+[1] http://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/5.1.0/threads-posix/seh/x86_64-5.1.0-release-posix-seh-rt_v4-rev0.7z/download
+[2] http://sourceforge.net/projects/opencvlibrary/files/opencv-win/

@@ -1,7 +1,7 @@
 #ifndef CV2_PATCHMATCH_HPP
 #define CV2_PATCHMATCH_HPP
 
-#include <opencv2/opencv.hpp>
+#include "opencv2/opencv.hpp"
 #include <limits>
 
 class PatchMatch

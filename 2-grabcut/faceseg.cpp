@@ -1,7 +1,7 @@
 #include "opencv2/opencv.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/objdetect/objdetect.hpp"
-#include <getopt.h> // getopt_long()
+#include "wingetopt.h" // getopt_long()
 
 #include "grabcut.hpp"
 
@@ -216,6 +216,7 @@ int main(int argc, char const *argv[])
     finalMask.setTo(GC_BGD);
 
     cvtColor(image, grayImage, CV_BGR2GRAY);
+    equalizeHist(grayImage, grayImage);
 
     cerr << "Detect faces ... ";
     vector<Rect> faces;

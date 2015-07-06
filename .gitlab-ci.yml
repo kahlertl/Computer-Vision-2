@@ -24,3 +24,17 @@ build-win:
     - windows
     - cmake
     - mingw
+
+# Special build for Windows
+# Loads the OpenCV directory from the environmetal variable "OpenCV_DIR"
+build-visual-studio:
+  script:
+    - mkdir build
+    - cd build
+    - cmake -G "MinGW Makefiles" -D CMAKE_BUILD_TYPE=Debug -D CMAKE_CXX_COMPILER=g++ MAKE_MAKE_PROGRAM=mingw32-make ..
+    - mingw32-make
+  tags:
+    - opencv2
+    - windows
+    - cmake
+    - visual-studio

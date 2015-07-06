@@ -2,7 +2,17 @@ cmake_minimum_required(VERSION 2.8)
 
 project(cv2)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+option(FORCE_WINGETOPT "help string describing option" OFF)
+
+# Set compiler flag for C++ 2011 standard
+if (CMAKE_COMPILER_IS_GNUCC)
+  set(CMAKE_CXX_FLAGS "-std=c++0x")
+endif()
+
+# Force usage of the Windows getopt implementation
+if (FORCE_WINGETOPT)
+  add_definitions("-DFORCE_WINGETOPT")
+endif()
 
 # we use the OpenCV lib
 find_package(OpenCV REQUIRED)

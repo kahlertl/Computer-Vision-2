@@ -1,9 +1,11 @@
+// POSIX getopt_long() - it is important to include this header first, if you
+// want to overwrite the GNUC <getopt.h>
+#include "wingetopt.h"
 #include <iostream>
 #include <string>
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 
-#include "wingetopt.h" // POSIX getopt_long()
 #include "grabcut.hpp"
 
 using namespace std;

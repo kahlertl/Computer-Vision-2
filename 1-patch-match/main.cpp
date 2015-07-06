@@ -1,8 +1,8 @@
+#include "wingetopt.h" // getopt_long()
 #include <time.h>       // time
 #include <stdlib.h>     // srand, rand
 #include "patchmatch.hpp"
 #include <iostream>
-#include <getopt.h> // getopt_long()
 
 using namespace cv;
 using namespace std;

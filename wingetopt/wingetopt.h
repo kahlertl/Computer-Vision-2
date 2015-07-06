@@ -8,27 +8,44 @@
  * source: http://note.sonots.com/Comp/CompLang/cpp/getopt.html
  */
 
-#ifdef __GNUC__
+#if defined __GNUC__ && !defined FORCE_WINGETOPT
 #include <getopt.h>
-#endif
-#ifndef __GNUC__
+#else
 
-#ifndef _WINGETOPT_H_
-#define _WINGETOPT_H_
+#ifndef _WINGETOPT_H
+#define _WINGETOPT_H
+#define _GETOPT_H // define to prevent <getopt.h> to be included
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern int opterr;
-extern int optind;
-extern int optopt;
-extern char *optarg;
-extern int getopt(int argc, char **argv, char *opts);
+extern int opterr;        /* if error message should be printed */
+extern int optind;        /* index into parent argv vector */
+extern int optopt;        /* character checked for validity */
+extern int optreset;        /* reset getopt */
+extern char *optarg;        /* argument associated with option */
+
+struct option
+{
+  const char *name;
+  int has_arg;
+  int *flag;
+  int val;
+};
+
+#define no_argument       0
+#define required_argument 1
+#define optional_argument 2
+
+int getopt(int, char**, char*);
+int getopt_long(int argc, char * const argv[],
+                const char *optstring,
+                const struct option *longopts, int *longindex);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  /* _GETOPT_H_ */
-#endif  /* __GNUC__ */
+#endif  /* _WINGETOPT_H */
+#endif  /* __GNUC__ && FORCE_WINGETOPT */

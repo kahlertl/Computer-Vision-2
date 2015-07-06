@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  */
 
-#if defined FORCE_GETOPT || !defined __GNUC__
+#if defined FORCE_WINGETOPT || !defined __GNUC__
 
 #include <assert.h>
 #include <errno.h>

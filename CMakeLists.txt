@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 
 project(cv2)
 
-option(FORCE_GETOPT "help string describing option" OFF)
+option(FORCE_WINGETOPT "help string describing option" OFF)
 
 # Set compiler flag for C++ 2011 standard
 if (CMAKE_COMPILER_IS_GNUCC)
@@ -10,8 +10,8 @@ if (CMAKE_COMPILER_IS_GNUCC)
 endif()
 
 # Force usage of the Windows getopt implementation
-if (FORCE_GETOPT)
-  add_definitions("-DFORCE_GETOPT")
+if (FORCE_WINGETOPT)
+  add_definitions("-DFORCE_WINGETOPT")
 endif()
 
 # we use the OpenCV lib
@@ -24,8 +24,8 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # Windows port of POSIX "getopt.h"
-include_directories(getopt/)
-add_subdirectory(getopt/)
+include_directories(wingetopt/)
+add_subdirectory(wingetopt/)
 
 # include the different tasks
 add_subdirectory(1-patch-match/)

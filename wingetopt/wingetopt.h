@@ -8,12 +8,13 @@
  * source: http://note.sonots.com/Comp/CompLang/cpp/getopt.html
  */
 
-#if defined __GNUC__ && !defined FORCE_GETOPT
+#if defined __GNUC__ && !defined FORCE_WINGETOPT
 #include <getopt.h>
 #else
 
-#ifndef _GETOPT_H
-#define _GETOPT_H
+#ifndef _WINGETOPT_H
+#define _WINGETOPT_H
+#define _GETOPT_H // define to prevent <getopt.h> to be included
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,5 +47,5 @@ int getopt_long(int argc, char * const argv[],
 }
 #endif
 
-#endif  /* _GETOPT_H */
-#endif  /* __GNUC__ && FORCE_GETOPT */
+#endif  /* _WINGETOPT_H */
+#endif  /* __GNUC__ && FORCE_WINGETOPT */

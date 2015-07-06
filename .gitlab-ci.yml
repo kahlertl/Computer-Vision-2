@@ -17,7 +17,7 @@ build-getopt:
   script:
     - mkdir build/
     - cd build
-    - cmake -D CMAKE_BUILD_TYPE=Debug -D FORCE_GETOPT=ON ..
+    - cmake -D CMAKE_BUILD_TYPE=Debug -D FORCE_WINGETOPT=ON ..
     - make
   tags:
     - cmake
@@ -43,7 +43,7 @@ build-getopt-win:
   script:
     - mkdir build
     - cd build
-    - cmake -G "MinGW Makefiles" -D CMAKE_BUILD_TYPE=Debug -D FORCE_GETOPT=ON -D CMAKE_CXX_COMPILER=g++ MAKE_MAKE_PROGRAM=mingw32-make ..
+    - cmake -G "MinGW Makefiles" -D CMAKE_BUILD_TYPE=Debug -D FORCE_WINGETOPT=ON -D CMAKE_CXX_COMPILER=g++ MAKE_MAKE_PROGRAM=mingw32-make ..
     - cmake --build .
   tags:
     - opencv2

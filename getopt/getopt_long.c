@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __GNUC__
+#if defined FORCE_GETOPT || !defined __GNUC__
 
 #include <assert.h>
 #include <errno.h>
@@ -72,9 +72,61 @@ __progname(nargv0)
 #define    BADARG    (int)':'
 #define    EMSG    ""
 
-/*
- * getopt --
- *    Parse argc/argv argument vector.
+/* 
+ * The getopt() function parses the command-line arguments. Its arguments argc
+ * and argv are the argument count and array as passed to the main() function on
+ * program invocation. An element of argv that starts with '-' (and is not
+ * exactly "-" or "--") is an option element. The characters of this element
+ * (aside from the initial '-') are option characters. If getopt() is called
+ * repeatedly, it returns successively each of the option characters from each of
+ * the option elements.
+ * 
+ * The variable optind is the index of the next element to be processed in argv.
+ * The system initializes this value to 1. The caller can reset it to 1 to
+ * restart scanning of the same argv, or when scanning a new argument vector.
+ * 
+ * If getopt() finds another option character, it returns that character,
+ * updating the external variable optind and a static variable nextchar so that
+ * the next call to getopt() can resume the scan with the following option
+ * character or argv-element.
+ * 
+ * If there are no more option characters, getopt() returns -1. Then optind is
+ * the index in argv of the first argv-element that is not an option.
+ * 
+ * optstring is a string containing the legitimate option characters. If such a
+ * character is followed by a colon, the option requires an argument, so getopt()
+ * places a pointer to the following text in the same argv-element, or the text
+ * of the following argv-element, in optarg. Two colons mean an option takes an
+ * optional arg; if there is text in the current argv-element (i.e., in the same
+ * word as the option name itself, for example, "-oarg"), then it is returned in
+ * optarg, otherwise optarg is set to zero. This is a GNU extension. If optstring
+ * contains W followed by a semicolon, then -W foo is treated as the long option
+ * --foo. (The -W option is reserved by POSIX.2 for implementation extensions.)
+ * This behavior is a GNU extension, not available with libraries before glibc 2.
+ * 
+ * By default, getopt() permutes the contents of argv as it scans, so that
+ * eventually all the nonoptions are at the end. Two other modes are also
+ * implemented. If the first character of optstring is '+' or the environment
+ * variable POSIXLY_CORRECT is set, then option processing stops as soon as a
+ * nonoption argument is encountered. If the first character of optstring is '-',
+ * then each nonoption argv-element is handled as if it were the argument of an
+ * option with character code 1. (This is used by programs that were written to
+ * expect options and other argv-elements in any order and that care about the
+ * ordering of the two.) The special argument "--" forces an end of option-
+ * scanning regardless of the scanning mode.
+ * 
+ * If getopt() does not recognize an option character, it prints an error message
+ * to stderr, stores the character in optopt, and returns '?'. The calling
+ * program may prevent the error message by setting opterr to 0.
+ * 
+ * If getopt() finds an option character in argv that was not included in
+ * optstring, or if it detects a missing option argument, it returns '?' and sets
+ * the external variable optopt to the actual option character. If the first
+ * character (following any optional '+' or '-' described above) of optstring is
+ * a colon (':'), then getopt() returns ':' instead of '?' to indicate a missing
+ * option argument. If an error was detected, and the first character of
+ * optstring is not a colon, and the external variable opterr is nonzero (which
+ * is the default), getopt() prints an error message.
  */
 int
 getopt_internal(nargc, nargv, ostr)
@@ -158,17 +210,18 @@ getopt2(nargc, nargv, ostr)
 }
 #endif
 
+
 /*
- * getopt_long --
- *    Parse argc/argv argument vector.
+ * The getopt_long() function works like getopt() except that it also accepts
+ * long options, started with two dashes. (If the program accepts only long
+ * options, then optstring should be specified as an empty string (""), not
+ * NULL.) Long option names may be abbreviated if the abbreviation is unique or
+ * is an exact match for some defined option. A long option may take a parameter,
+ * of the form --arg=param or --arg param.
  */
-int
-getopt_long(nargc, nargv, options, long_options, index)
-    int nargc;
-    char ** nargv;
-    char * options;
-    struct option * long_options;
-    int * index;
+int getopt_long(int nargc, char * const nargv[],
+                const char *options,
+                const struct option *long_options, int *index)
 {
     int retval;
 

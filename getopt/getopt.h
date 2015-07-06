@@ -8,13 +8,12 @@
  * source: http://note.sonots.com/Comp/CompLang/cpp/getopt.html
  */
 
-#ifdef __GNUC__
+#if defined __GNUC__ && !defined FORCE_GETOPT
 #include <getopt.h>
-#endif
-#ifndef __GNUC__
+#else
 
-#ifndef _WINGETOPT_H_
-#define _WINGETOPT_H_
+#ifndef _GETOPT_H
+#define _GETOPT_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,11 +38,13 @@ struct option
 #define optional_argument 2
 
 int getopt(int, char**, char*);
-int getopt_long(int, char**, char*, struct option*, int*);
+int getopt_long(int argc, char * const argv[],
+                const char *optstring,
+                const struct option *longopts, int *longindex);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  /* _GETOPT_H_ */
-#endif  /* __GNUC__ */
+#endif  /* _GETOPT_H */
+#endif  /* __GNUC__ && FORCE_GETOPT */

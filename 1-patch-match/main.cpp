@@ -1,4 +1,4 @@
-#include "wingetopt.h" // getopt_long()
+#include <getopt.h>     // getopt_long()
 #include <time.h>       // time
 #include <stdlib.h>     // srand, rand
 #include "patchmatch.hpp"

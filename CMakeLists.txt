@@ -28,8 +28,14 @@ ExternalProject_Get_Property(argtable2 SOURCE_DIR)
 include_directories(${SOURCE_DIR}/src)
 
 # create library we can use for linking
-add_library(libargtable2 STATIC IMPORTED )
-set_property(TARGET libargtable2 PROPERTY IMPORTED_LOCATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libargtable2${CMAKE_STATIC_LIBRARY_SUFFIX})
+add_library(libargtable2 STATIC IMPORTED)
+# Visual Studio adds an "d" to its debug libraries
+if(MSVC and  CMAKE_BUILD_TYPE EQUAL "DEBUG")
+  set_property(TARGET libargtable2 PROPERTY IMPORTED_LOCATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libargtable2d${CMAKE_STATIC_LIBRARY_SUFFIX})
+else()
+  set_property(TARGET libargtable2 PROPERTY IMPORTED_LOCATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libargtable2${CMAKE_STATIC_LIBRARY_SUFFIX})
+endif()
+
 add_dependencies(libargtable2 argtable2)
 
 # file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/optionparser)

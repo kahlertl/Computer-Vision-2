@@ -35,6 +35,7 @@
 
 #if defined FORCE_WINGETOPT || !defined __GNUC__
 
+#include "wingetopt.h"
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>

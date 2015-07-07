@@ -33,12 +33,12 @@
 
 #if defined FORCE_WINGETOPT || !defined __GNUC__
 
+#include "wingetopt.h"
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "getopt.h"
 
 extern int      opterr;    /* if error message should be printed */
 extern int      optind;    /* index into parent argv vector */

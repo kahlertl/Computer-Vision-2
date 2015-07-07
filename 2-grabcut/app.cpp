@@ -477,6 +477,8 @@ int appLoop(const Mat& image, bool extended, int neighbors)
     // user pressed the ESC key - we finish
     escape:
     destroyWindow(winName);
+
+    return 0;
 }
 
 

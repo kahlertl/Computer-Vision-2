@@ -30,7 +30,7 @@ include_directories(${SOURCE_DIR}/src)
 # create library we can use for linking
 add_library(libargtable2 STATIC IMPORTED)
 # Windows has a different name convention
-if(MSVC
+if(MSVC)
   # Visual Studio adds an "d" to its debug libraries
   if (CMAKE_BUILD_TYPE EQUAL "DEBUG")
     set_property(TARGET libargtable2 PROPERTY IMPORTED_LOCATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/argtable2d${CMAKE_STATIC_LIBRARY_SUFFIX})

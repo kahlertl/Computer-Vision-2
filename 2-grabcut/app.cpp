@@ -1,23 +1,23 @@
-// POSIX getopt_long() - it is important to include this header first, if you
-// want to overwrite the GNUC <getopt.h>
-#include "wingetopt.h"
 #include <iostream>
 #include <string>
+// #include <getopt.h>
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
+#include "argtable2.h"
 
 #include "grabcut.hpp"
 
 using namespace std;
 using namespace cv;
 
-// command line option list
-static const struct option long_options[] = {
-    { "help",       no_argument,       0, 'h' },
-    { "extended",   no_argument,       0, 'e' },
-    { "neighbors",  required_argument, 0, 'n' },
-    0 // end of parameter list
-};
+// // command line option list
+// static const struct option long_options[] = {
+//     { "help",       no_argument,       0, 'h' },
+//     { "extended",   no_argument,       0, 'e' },
+//     { "neighbors",  required_argument, 0, 'n' },
+//     0 // end of parameter list
+// };
+
 
 static void usage()
 {
@@ -35,25 +35,25 @@ static void usage()
          << endl;
 }
 
-static bool parsePositionalImage(Mat& image, const int channels, const string& name, int argc, char const *argv[])
-{
-    if (optind >= argc) {
-        cerr << argv[0] << ": required argument: '" << name << "'" << endl;
-        usage();
+// static bool parsePositionalImage(Mat& image, const int channels, const string& name, int argc, char const *argv[])
+// {
+//     if (optind >= argc) {
+//         cerr << argv[0] << ": required argument: '" << name << "'" << endl;
+//         usage();
 
-        return false;
-    } else {
-        image = imread(argv[optind++], channels);
+//         return false;
+//     } else {
+//         image = imread(argv[optind++], channels);
 
-        if (image.empty()) {
-            cerr << "Error: Cannot read '" << argv[optind] << "'" << endl;
+//         if (image.empty()) {
+//             cerr << "Error: Cannot read '" << argv[optind] << "'" << endl;
 
-            return false;
-        }
-    }
+//             return false;
+//         }
+//     }
 
-    return true;
-}
+//     return true;
+// }
 
 static void hotkeyHelp()
 {
@@ -444,50 +444,51 @@ int main(int argc, const char **argv)
     int connectivitySlider  = 100;
     int contrastSlider  = 100;
 
-    // parse command line options
-    while (true) {
-        int index = -1;
-        int result = getopt_long(argc, (char **) argv, "hen:", long_options, &index);
 
-        // end of parameter list
-        if (result == -1) {
-            break;
-        }
+    // // parse command line options
+    // while (true) {
+    //     int index = -1;
+    //     int result = getopt_long(argc, (char **) argv, "hen:", long_options, &index);
 
-        switch (result) {
-            case 'h':
-                usage();
-                return 0;
+    //     // end of parameter list
+    //     if (result == -1) {
+    //         break;
+    //     }
 
-            case 'e':
-                extended = true;
-                break;
+    //     switch (result) {
+    //         case 'h':
+    //             usage();
+    //             return 0;
 
-            case 'n': {
-                int n = stoi(string(optarg));
-                if (n == 4) {
-                    neighbors = GC_N4;
-                } else if (n == 8) {
-                    neighbors = GC_N8;
-                } else {
-                    cerr << argv[0] << ": Invalid neighborshood " << optarg
-                         << ". Got to town, only 4 and 8 are supported. Implement it yourself!" << endl;
-                    return 1;
-                }
-                break;
-            }
+    //         case 'e':
+    //             extended = true;
+    //             break;
 
-            case '?': // missing option
-                return 1;
+    //         case 'n': {
+    //             int n = stoi(string(optarg));
+    //             if (n == 4) {
+    //                 neighbors = GC_N4;
+    //             } else if (n == 8) {
+    //                 neighbors = GC_N8;
+    //             } else {
+    //                 cerr << argv[0] << ": Invalid neighborshood " << optarg
+    //                      << ". Got to town, only 4 and 8 are supported. Implement it yourself!" << endl;
+    //                 return 1;
+    //             }
+    //             break;
+    //         }
 
-            default: // unknown
-                cerr << "unknown parameter: " << optarg << endl;
-                break;
-        }
-    }
+    //         case '?': // missing option
+    //             return 1;
+
+    //         default: // unknown
+    //             cerr << "unknown parameter: " << optarg << endl;
+    //             break;
+    //     }
+    // }
 
     // load remaining command line argument
-    if (!parsePositionalImage(image, CV_LOAD_IMAGE_COLOR, "image", argc, argv)) { return 1; }
+    // if (!parsePositionalImage(image, CV_LOAD_IMAGE_COLOR, "image", argc, argv)) { return 1; }
 
     // use the inital value of the slider for the app initialziation
     GCApplication gcapp(trackbarToTolerance(toleranceSlider),

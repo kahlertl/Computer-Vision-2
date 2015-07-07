@@ -399,7 +399,7 @@ void GCApplication::resetIter()
 
 ostream& operator<< (ostream& stream, const GCApplication& gcapp)
 {
-    return stream << "GCApplication \"" << gcapp.winName << "\"" << endl
+    return stream << "GCApplication" << endl
                   << "    extended binary:  " << (gcapp.extended ? "true" : "false") << endl
                   << "    neighbors:        " << gcapp.neighbors << endl
                   << "    tolerance:        " << gcapp.tolerance << endl
@@ -431,64 +431,20 @@ static void onConnectivityTrackbar(int value, void* gcapp)
     ((GCApplication*) gcapp)->setConnectivity(trackbarToConnectivity(value));
 }
 
-int main(int argc, const char **argv)
+
+int appLoop(const Mat& image, bool extended, int neighbors)
 {
-    Mat image;
-
-    // command line parameters
-    int neighbors = GC_N8;
-    bool extended = false;
-
     // trackbar parameters
     int toleranceSlider = 50;
     int connectivitySlider  = 100;
     int contrastSlider  = 100;
 
+    // normal case: take the command line options at face value
+    // exitcode = mymain(list->count, recurse->count, repeat->ival[0],
+    //                   defines->sval, defines->count,
+    //                   outfile->filename[0], verbose->count,
+    //                   infiles->filename, infiles->count);
 
-    // // parse command line options
-    // while (true) {
-    //     int index = -1;
-    //     int result = getopt_long(argc, (char **) argv, "hen:", long_options, &index);
-
-    //     // end of parameter list
-    //     if (result == -1) {
-    //         break;
-    //     }
-
-    //     switch (result) {
-    //         case 'h':
-    //             usage();
-    //             return 0;
-
-    //         case 'e':
-    //             extended = true;
-    //             break;
-
-    //         case 'n': {
-    //             int n = stoi(string(optarg));
-    //             if (n == 4) {
-    //                 neighbors = GC_N4;
-    //             } else if (n == 8) {
-    //                 neighbors = GC_N8;
-    //             } else {
-    //                 cerr << argv[0] << ": Invalid neighborshood " << optarg
-    //                      << ". Got to town, only 4 and 8 are supported. Implement it yourself!" << endl;
-    //                 return 1;
-    //             }
-    //             break;
-    //         }
-
-    //         case '?': // missing option
-    //             return 1;
-
-    //         default: // unknown
-    //             cerr << "unknown parameter: " << optarg << endl;
-    //             break;
-    //     }
-    // }
-
-    // load remaining command line argument
-    // if (!parsePositionalImage(image, CV_LOAD_IMAGE_COLOR, "image", argc, argv)) { return 1; }
 
     // use the inital value of the slider for the app initialziation
     GCApplication gcapp(trackbarToTolerance(toleranceSlider),
@@ -523,7 +479,7 @@ int main(int argc, const char **argv)
         switch ((char) c) {
             case '\x1b':
                 cout << "Exiting ..." << endl;
-                goto exit_main;
+                goto escape;
             case 'r':
                 cout << endl;
                 gcapp.reset();
@@ -548,8 +504,119 @@ int main(int argc, const char **argv)
                 break;
         }
     }
-
-    exit_main:
+    // user pressed the ESC key - we finish
+    escape:
     destroyWindow(winName);
-    return 0;
+}
+
+
+int main(int argc, char **argv)
+{
+    Mat image;
+
+    // command line parameters
+    //int neighbors = GC_N8;
+    // bool extended = false;
+
+    struct arg_lit*  help        = arg_lit0("h", "help",                   "Show this help message");
+    struct arg_lit*  version     = arg_lit0("v", "version",                "Print version information and exit");
+    struct arg_lit*  extended    = arg_lit0("e", "extended",               "Use an extended pairwise term");
+    struct arg_int*  neighbors   = arg_int0("n", "neighbors", nullptr,     "Neighborhood system that should be used (4 or 8)");
+    struct arg_file *infile      = arg_filen(nullptr, nullptr, "image", 1, 1, "input image");
+    
+
+    // struct arg_lit  *list    = arg_lit0("lL", nullptr,                      "list files");
+    // struct arg_lit  *recurse = arg_lit0("R",  nullptr,                       "recurse through subdirectories");
+    // struct arg_int  *repeat  = arg_int0("k","scalar",nullptr,              "define scalar value k (default is 3)");
+    // struct arg_str  *defines = arg_strn("D","define","MACRO",0,argc+2,  "macro definitions");
+    // struct arg_file *outfile = arg_file0("o",nullptr,"<output>",           "output file (default is \"-\")");
+    // struct arg_lit  *verbose = arg_lit0("v","verbose,debug",            "verbose messages");
+    // struct arg_file *infiles = arg_filen(nullptr,nullptr,nullptr,1,argc+2,       "input file(s)");
+    struct arg_end  *end     = arg_end(20);
+
+    void* argtable[] = { help, version, extended, neighbors, infile, end };
+
+    const char* progname = "grabcut";
+
+    int nerrors;
+    int exitcode = 0;
+
+    // verify the argtable[] entries were allocated sucessfully
+    if (arg_nullcheck(argtable) != 0) {
+        // null pointer entries were detected, some allocations must have failed
+        printf("%s: insufficient memory\n", progname);
+        exitcode = 1;
+        goto exit;
+    }
+
+    // set any command line default values prior to parsing
+    neighbors->ival[0] = GC_N8;
+
+    // Parse the command line as defined by argtable[]
+    nerrors = arg_parse(argc, argv, argtable);
+
+    // special case: '--help' takes precedence over error reporting
+    if (help->count > 0) {
+        cout << "Usage: " << progname << " [options] image" << endl
+             << endl
+             << "This program demonstrates GrabCut segmentation." << endl
+             << "Select an object in a region and then grabcut will attempt to segment it out." << endl
+             << endl;
+
+        arg_print_glossary(stdout, argtable, "  %-25s %s\n");
+
+        exitcode = 0;
+
+        goto exit;
+    }
+
+    // special case: '--version' takes precedence error reporting
+    if (version->count > 0) {
+        // printf("'%s' example program for the \"argtable\" command line argument parser.\n", progname);
+        cout << __DATE__ << ", Lucas Kahlert" << endl;
+        exitcode = 0;
+        goto exit;
+    }
+
+    // If the parser returned any errors then display them and exit
+    if (nerrors > 0) {
+        // Display the error details contained in the arg_end struct.
+        arg_print_errors(stdout, end, progname);
+
+        printf("Try \"%s --help\" for more information.\n",progname);
+
+        exitcode = 1;
+        goto exit;
+    }
+
+    // special case: uname with no command line options induces brief help */
+    if (argc == 1) {
+        printf("Try \"%s --help\" for more information.\n", progname);
+        exitcode = 0;
+        goto exit;
+    }
+
+    // sanitize neighborhood parameter
+    if (neighbors->ival[0] != GC_N8 && neighbors->ival[0] != GC_N4) {
+        cerr << "Error: Unsupported neighborhood " << neighbors->ival[0] << endl;
+
+        exitcode = 1;
+        goto exit;
+    }
+
+    // try to read input image
+    image = imread(*(infile->filename), CV_LOAD_IMAGE_COLOR);
+    if (image.empty()) {
+        cerr << "Error: Cannot read '" << *(infile->filename) << "'" << endl;
+
+        exitcode = 1;
+        goto exit;
+    }
+
+    appLoop(image, extended->count > 0, neighbors->ival[0]);
+
+    exit:
+    // deallocate each non-null entry in argtable[]
+    arg_freetable(argtable,sizeof(argtable)/sizeof(argtable[0]));
+   
 }

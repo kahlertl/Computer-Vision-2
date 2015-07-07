@@ -19,7 +19,8 @@ build-visual-studio:
     - mkdir build
     - cd build
     - cmake -G "Visual Studio 12 Win64" -D CMAKE_BUILD_TYPE=Debug ..
-    - cmake --build .
+    - cmake --build . --target grabcut
+    - cmake --build . --target faceseg
   tags:
     - opencv2
     - windows

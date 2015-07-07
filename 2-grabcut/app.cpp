@@ -1,6 +1,5 @@
 #include <iostream>
 #include <string>
-// #include <getopt.h>
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "argtable2.h"
@@ -9,15 +8,6 @@
 
 using namespace std;
 using namespace cv;
-
-// // command line option list
-// static const struct option long_options[] = {
-//     { "help",       no_argument,       0, 'h' },
-//     { "extended",   no_argument,       0, 'e' },
-//     { "neighbors",  required_argument, 0, 'n' },
-//     0 // end of parameter list
-// };
-
 
 static void usage()
 {
@@ -34,26 +24,6 @@ static void usage()
          << "                          Default: 8" << endl
          << endl;
 }
-
-// static bool parsePositionalImage(Mat& image, const int channels, const string& name, int argc, char const *argv[])
-// {
-//     if (optind >= argc) {
-//         cerr << argv[0] << ": required argument: '" << name << "'" << endl;
-//         usage();
-
-//         return false;
-//     } else {
-//         image = imread(argv[optind++], channels);
-
-//         if (image.empty()) {
-//             cerr << "Error: Cannot read '" << argv[optind] << "'" << endl;
-
-//             return false;
-//         }
-//     }
-
-//     return true;
-// }
 
 static void hotkeyHelp()
 {
@@ -514,24 +484,12 @@ int main(int argc, char **argv)
 {
     Mat image;
 
-    // command line parameters
-    //int neighbors = GC_N8;
-    // bool extended = false;
-
-    struct arg_lit*  help        = arg_lit0("h", "help",                   "Show this help message");
-    struct arg_lit*  version     = arg_lit0("v", "version",                "Print version information and exit");
-    struct arg_lit*  extended    = arg_lit0("e", "extended",               "Use an extended pairwise term");
-    struct arg_int*  neighbors   = arg_int0("n", "neighbors", nullptr,     "Neighborhood system that should be used (4 or 8)");
+    // Command line options and arguments
+    struct arg_lit*  help        = arg_lit0("h", "help",                      "Show this help message");
+    struct arg_lit*  version     = arg_lit0("v", "version",                   "Print version information and exit");
+    struct arg_lit*  extended    = arg_lit0("e", "extended",                  "Use an extended pairwise term");
+    struct arg_int*  neighbors   = arg_int0("n", "neighbors", nullptr,        "Neighborhood system that should be used (4 or 8)");
     struct arg_file *infile      = arg_filen(nullptr, nullptr, "image", 1, 1, "input image");
-    
-
-    // struct arg_lit  *list    = arg_lit0("lL", nullptr,                      "list files");
-    // struct arg_lit  *recurse = arg_lit0("R",  nullptr,                       "recurse through subdirectories");
-    // struct arg_int  *repeat  = arg_int0("k","scalar",nullptr,              "define scalar value k (default is 3)");
-    // struct arg_str  *defines = arg_strn("D","define","MACRO",0,argc+2,  "macro definitions");
-    // struct arg_file *outfile = arg_file0("o",nullptr,"<output>",           "output file (default is \"-\")");
-    // struct arg_lit  *verbose = arg_lit0("v","verbose,debug",            "verbose messages");
-    // struct arg_file *infiles = arg_filen(nullptr,nullptr,nullptr,1,argc+2,       "input file(s)");
     struct arg_end  *end     = arg_end(20);
 
     void* argtable[] = { help, version, extended, neighbors, infile, end };

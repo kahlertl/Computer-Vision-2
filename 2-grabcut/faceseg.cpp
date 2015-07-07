@@ -29,56 +29,6 @@ const int startAngle = 0;   // Starting angle of the elliptic arc in degrees.
 const int endAngle   = 360; // Ending angle of the elliptic arc in degrees.
 const int connected  = 8;
 
-// command line defaults
-// string faceCascadeName = "haarcascade_frontalface_alt.xml";
-// string eyesCascadeName = "haarcascade_eye_tree_eyeglasses.xml";
-
-// // command line option list
-// static const struct option long_options[] = {
-//     {"help",         no_argument,       0, 'h'},
-//     {"face-cascade", required_argument, 0, 'f'},
-//     {"eye-cascade" , required_argument, 0, 'e'},
-//     0 // end of parameter list
-// };
-
-// static void usage()
-// {
-//     cout << "Usage: faceseg [options] image" << endl
-//     << endl
-//     << "This program will find and segment a faces from a given image" << endl
-//     << endl
-//     #ifdef __linux__
-//     << "Default default location for openCV cascades:" << endl
-//     << endl
-//     << "    /usr/share/opencv/haarcascades/" << endl
-//     << endl
-//     #endif
-//     << "  options:" << endl
-//     << "    -h, --help            Show this help message" << endl
-//     << "    -f, --face-cascade    XML-file of the face cascade" << endl
-//     << "                          Default: " << faceCascadeName << endl
-//     << "    -e, --eye-cascade     XML-file of the eye cascade" << endl
-//     << "                          Default: " << eyesCascadeName << endl
-//     << endl;
-// }
-
-// static bool parsePositionalImage(Mat &image, const int channels, const string &name, int argc, char const *argv[])
-// {
-//     if (optind >= argc) {
-//         cerr << argv[0] << ": required argument: '" << name << "'" << endl;
-//         usage();
-//         return false;
-//     } else {
-//         image = imread(argv[optind++], channels);
-
-//         if (image.empty()) {
-//             cerr << "Error: Cannot read '" << argv[optind] << "'" << endl;
-//             return false;
-//         }
-//     }
-//     return true;
-// }
-
 static void wait(const string& message = "Press ESC to continue ...")
 {
     cerr << message << endl;
@@ -213,66 +163,13 @@ int main(int argc, char *argv[])
     CascadeClassifier faceClassifier, eyesClassifier;
     Mat image;
 
-    // // parse command line options
-    // while (true) {
-    //     int index = -1;
-    //     int result = getopt_long(argc, (char **) argv, "he:f:", long_options, &index);
-
-    //     // end of parameter list
-    //     if (result == -1) {
-    //         break;
-    //     }
-
-    //     switch (result) {
-    //         case 'h':
-    //             usage();
-    //             return 0;
-    //         case 'e':
-    //             eyesClassifierName = string(optarg);
-    //             break;
-
-    //         case 'f':
-    //             faceClassifierName = string(optarg);
-    //             break;
-
-    //         case '?': // missing option
-    //             return 1;
-
-    //         default: // unknown
-    //             cerr << "Error: unknown parameter: " << optarg << endl;
-    //             break;
-    //     }
-    // }
-
-    // // load remaining command line argument
-    // if (!parsePositionalImage(image, CV_LOAD_IMAGE_COLOR, "image", argc, argv)) {
-    //     return 1;
-    // }
-    // if( !faceClassifier.load(faceClassifierName)){
-    //     cerr << "Error: can not load face cascade \"" << faceClassifierName << "\"" << endl;
-    //     return 1;
-    // };
-    // if( !eyesClassifier.load(eyesClassifierName)){
-    //     cerr << "Error: can not load eye cascade \"" << eyesClassifierName << "\"" << endl;
-    //     return 1;
-    // };
-    
-
-    struct arg_lit*  help         = arg_lit0("h", "help",                   "Show this help message");
-    struct arg_lit*  version      = arg_lit0("v", "version",                "Print version information and exit");
-    struct arg_file* faceCascade  = arg_file0("f", "face-cascade", nullptr, "XML-file of the face cascade");
-    struct arg_file* eyesCascade  = arg_file0("e", "eye-cascade", nullptr, "XML-file of the eye cascade");
+    // Command line options and arguments
+    struct arg_lit*  help         = arg_lit0("h", "help",                      "Show this help message");
+    struct arg_lit*  version      = arg_lit0("v", "version",                   "Print version information and exit");
+    struct arg_file* faceCascade  = arg_file0("f", "face-cascade", nullptr,    "XML-file of the face cascade");
+    struct arg_file* eyesCascade  = arg_file0("e", "eye-cascade", nullptr,     "XML-file of the eye cascade");
     struct arg_file* infile       = arg_filen(nullptr, nullptr, "image", 1, 1, "input image");
-    
-
-    // struct arg_lit  *list    = arg_lit0("lL", nullptr,                      "list files");
-    // struct arg_lit  *recurse = arg_lit0("R",  nullptr,                       "recurse through subdirectories");
-    // struct arg_int  *repeat  = arg_int0("k","scalar",nullptr,              "define scalar value k (default is 3)");
-    // struct arg_str  *defines = arg_strn("D","define","MACRO",0,argc+2,  "macro definitions");
-    // struct arg_file *outfile = arg_file0("o",nullptr,"<output>",           "output file (default is \"-\")");
-    // struct arg_lit  *verbose = arg_lit0("v","verbose,debug",            "verbose messages");
-    // struct arg_file *infiles = arg_filen(nullptr,nullptr,nullptr,1,argc+2,       "input file(s)");
-    struct arg_end  *end     = arg_end(20);
+    struct arg_end  *end          = arg_end(20);
 
     void* argtable[] = { help, version, faceCascade, eyesCascade, infile, end };
 

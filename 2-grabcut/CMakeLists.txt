@@ -1,8 +1,8 @@
 add_executable(grabcut app.cpp grabcut.cpp)
 add_executable(faceseg faceseg.cpp grabcut.cpp)
 
-target_link_libraries(grabcut ${OpenCV_LIBS} libargtable2)
-target_link_libraries(faceseg ${OpenCV_LIBS} libargtable2)
+target_link_libraries(grabcut ${OpenCV_LIBS} argtable2)
+target_link_libraries(faceseg ${OpenCV_LIBS} argtable2)
 
 set(images images/face1.png
            images/face2.png
